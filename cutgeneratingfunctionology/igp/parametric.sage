@@ -1263,6 +1263,8 @@ class SemialgebraicComplexComponent(SageObject):    # FIXME: Rename this to be m
         sage: component = SemialgebraicComplexComponent(K, region_type)
         sage: list(component.bsa.lt_poly())
         [x + y - 2, y^2 - x]
+        sage: component.get_ineqs()
+        ([x + y - 2 < 0, y^2 - x < 0], [], [x + y - 2 == 0, y^2 - x == 0])
         sage: component.plot(xmin=0, xmax=4, ymin=-3, ymax=3)        # not tested
         sage: new_points = component.find_neighbour_candidates(1/4, 'heuristic', goto_lower_dim=False, pos_poly=None)
         sage: new_pts = sorted(new_points[0].keys())
@@ -1623,6 +1625,13 @@ class SemialgebraicComplexComponent(SageObject):    # FIXME: Rename this to be m
         ieqs = [ [-l.constant_coefficient()]+[-l.monomial_coefficient(m) for m in l.args()] for l in list(self.bsa.lt_poly()) + list(self.bsa.le_poly()) ]
         eqns = [ [-l.constant_coefficient()]+[-l.monomial_coefficient(m) for m in l.args()] for l in list(self.bsa.eq_poly())]
         return Polyhedron(ieqs=ieqs, eqns=eqns)
+                
+    def get_ineqs(self):
+        r"""
+        Returns a list of symbolic expressions used to define the underlying BSA. 
+        """
+        return [SR(poly) < SR(0) for poly in self.bsa.lt_poly()]+[SR(poly) <= SR(0) for poly in self.bsa.le_poly()]+[SR(poly) == SR(0) for poly in self.bsa.eq_poly()]
+
 
 def _max_x_y(x, y):    # A global, for testing pickling
     return max(x, y)
