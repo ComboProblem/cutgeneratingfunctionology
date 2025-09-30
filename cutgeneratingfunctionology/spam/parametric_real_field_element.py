@@ -12,6 +12,7 @@ from sage.functions.generalized import sign
 from cutgeneratingfunctionology.shared.EvaluationExceptions import FactorUndetermined
 import operator
 
+
 def richcmp_op_negation(op):
     if op == op_LT:
         return op_GE
@@ -28,6 +29,7 @@ def richcmp_op_negation(op):
     else:
         raise ValueError("{} is not a valid richcmp operator".format(op))
 
+
 def format_richcmp_op(op):
     if op == op_LT:
         return '<'
@@ -43,6 +45,7 @@ def format_richcmp_op(op):
         return '>='
     else:
         raise ValueError("{} is not a valid richcmp operator".format(op))
+
 
 class ParametricRealFieldElement(FieldElement):
     r"""
@@ -84,6 +87,9 @@ class ParametricRealFieldElement(FieldElement):
                 possible_val = self.parent()._partial_eval_factor(self._sym)
                 if possible_val in possible_val.base_ring():
                     return possible_val
+                else:
+                    raise FactorUndetermined.("{} cannot be evaluated because the test point is not complete".format(self.sym()))
+
     def _richcmp_(left, right, op):
         r"""
         Examples for traditional cmp semantics::
@@ -132,8 +138,8 @@ class ParametricRealFieldElement(FieldElement):
             raise TypeError("comparing elements from different fields")
         if left.parent()._big_cells:
             try:
-                result = richcmp(left.val(), right.val(), op)
-            except FactorUndetermined: # Partial evauation is happen, assume the result is True.
+                result = richcmp((left-right).val(), 0, op)
+            except FactorUndetermined:  # Partial evaluation has happen, assume the result is True.
                 result = True
             if result:
                 true_op = op
@@ -158,13 +164,33 @@ class ParametricRealFieldElement(FieldElement):
             return result
         else:
             # Traditional cmp semantics.
-            if (left.val() == right.val()):
-                left.parent().assume_comparison(right, operator.eq, left)
-            elif (left.val() < right.val()):
-                left.parent().assume_comparison(left, operator.lt, right)
+            try:
+                expr_val = (left-right).val()
+                if( expr_val == 0):
+                    left.parent().assume_comparison(right, operator.eq, left)
+                elif (expr_val < 0):
+                    left.parent().assume_comparison(left, operator.lt, right)
+                else:
+                    left.parent().assume_comparison(right, operator.lt, left)
+                return richcmp(left.val(), right.val(), op)
+            except FactorUndetermined:
+                # With a partial evaluation, assume the written inequality is true.
+                true_op = op
+            if true_op == op_LT:
+                left.parent().assume_comparison(left - right, operator.lt)
+            elif true_op == op_GT:
+                left.parent().assume_comparison(left - right, operator.gt)
+            elif true_op == op_EQ:
+                left.parent().assume_comparison(right - left, operator.eq)
+            elif true_op == op_LE:
+                left.parent().assume_comparison(left - right, operator.le)
+            elif true_op == op_GE:
+                left.parent().assume_comparison(left - right, operator.ge)
+            elif true_op == op_NE:
+                left.parent().assume_comparison(right - left, operator.ne)
             else:
-                left.parent().assume_comparison(right, operator.lt, left)
-            return richcmp(left.val(), right.val(), op)
+                raise ValueError("{} is not a valid richcmp operator".format(op))
+            return True
 
     def __abs__(self):
         """
@@ -406,6 +432,7 @@ class ParametricRealFieldElement(FieldElement):
             2
         """
         return hash(self.val())
+
 
 def is_parametric_element(x):
     # We avoid using isinstance here so that this is robust even if parametric.sage is reloaded.
