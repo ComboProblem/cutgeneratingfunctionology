@@ -181,7 +181,7 @@ class ParametricRealField(Field):
 
     def __init__(self, values=None, names=None, allow_coercion_to_float=True,
                  mutable_values=None, allow_refinement=None, big_cells=None,
-                 base_ring=None, sym_ring=None, bsa=None):
+                 base_ring=None, sym_ring=None, bsa=None, default_backend=None):
         Field.__init__(self, self)
 
         if mutable_values is None:
@@ -251,7 +251,10 @@ class ParametricRealField(Field):
             # do the computation of the polyhedron incrementally,
             # rather than first building a huge list and then in a second step processing it.
             # the upstairs polyhedron defined by all constraints in self._eq/lt_factor
-            polyhedron = BasicSemialgebraicSet_polyhedral_ppl_NNC_Polyhedron(0)
+            if default_backend == "pplite":
+                polyhedron = BasicSemialgebraicSet_polyhedral_pplite_NNC_Polyhedron(0)
+            else:
+                polyhedron = BasicSemialgebraicSet_polyhedral_ppl_NNC_Polyhedron(0)
             # monomial_list records the monomials that appear in self._eq/lt_factor.
             # v_dict is a dictionary that maps each monomial to the index of its corresponding Variable in polyhedron
             bsa = BasicSemialgebraicSet_veronese(polyhedron, polynomial_map=[], poly_ring=sym_ring, v_dict={})
@@ -1344,7 +1347,7 @@ class SemialgebraicComplexComponent(SageObject):    # FIXME: Rename this to be m
         # In lower dim proof cell or non-linear equations case, some equations of K._bsa are not presented in polynomial_map.
         eqs = list(K._bsa.eq_poly())
         if not all(l(polynomial_map) == 0 for l in eqs):
-            polynomial_map = find_polynomial_map(eqs=eqs, poly_ring=poly_ring)
+            polynomial_map = find_polynomial_map(eqs=eqs, poly_ring=poly_ring)fv
             #self.bsa = K._bsa.section(polynomial_map, bsa_class='veronese', poly_ring=poly_ring)  # this is a bigger_bsa
             self.bsa = BasicSemialgebraicSet_veronese.from_bsa(BasicSemialgebraicSet_local(K._bsa.section(polynomial_map, poly_ring=poly_ring), self.var_value)) # TODO:, polynomial_map=list(poly_ring.gens()))
             # WHY is this input polynomial_map sometimes not compatible with the variable elimination done in bddbsa?
@@ -2099,6 +2102,7 @@ class SemialgebraicComplex(SageObject):
     def find_uncovered_random_point(self, var_bounds=None, max_failings=10000):
         r"""
         Return a random point that satisfies the bounds and is uncovered by any cells in the complex.
+
         Return ``None`` if the number of attempts > max_failings.
 
         EXAMPLES::
