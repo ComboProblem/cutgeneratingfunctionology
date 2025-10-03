@@ -864,8 +864,10 @@ class ParametricRealField(Field):
             if comparison_val_or_expr in base_ring:
                 if not op(comparison_val_or_expr, 0):
                     raise ParametricRealFieldInconsistencyError("New constant constraint {} {} {} is not satisfied".format(lhs, op, rhs))
-            else: # comparision_val_or_expr is algebraic expression, assume the comparison here is comparionsion_val_or_expr.
+            else: # comparision_val_or_expr is symbolic expression, assume the comparison here is comparionsion_val_or_expr.
                 comparison = comparison_val_or_expr
+                self.record_factor(comparison, op)
+                return
         if comparison in base_ring:
             return
         if comparison.denominator() == 1 and comparison.numerator().degree() == 1:
@@ -1063,7 +1065,9 @@ class ParametricRealField(Field):
                             eq_factors.append(new_fac)
                     except FactorUndetermined:
                         eq_factors.append(new_fac) #??? or pass?
-                        #This doesn't matter for now because under this branch  self._allow_refinement=True, and testpoint value is not removed, so  the exception FactorUndetermined should not happen.  In the future if the code in big_cells_impl changes and this exception happens, it is still safer to eq_factors.append(new_fac). This could result in smaller cell (which is allowed). With "pass" it may raise error in corner cases, such as when the removed testpoint value was the only eq factor without which there would be a sign contradiction.
+                        #This doesn't matter for now because under this branch  self._allow_refinement=True, and testpoint value is not removed, so  the exception FactorUndetermined should not happen.  
+                        #In the future if the code in big_cells_impl changes and this exception happens, it is still safer to eq_factors.append(new_fac). T
+                        #This could result in smaller cell (which is allowed). With "pass" it may raise error in corner cases, such as when the removed testpoint value was the only eq factor without which there would be a sign contradiction.
                 for new_fac in lt_factors:
                     self.record_factor(new_fac, operator.le)
                 if not self._big_cells:
@@ -1071,7 +1075,7 @@ class ParametricRealField(Field):
                         self.record_factor(new_fac, operator.eq)
                 else: #self._big_cells is True, self._allow_refinement is True.
                     undecided_eq = []
-                    for new_fac in eq_factors:
+                    for new_fac in eq_factors: # eq_factors is not guantreed to be non empty
                         if self.is_factor_known(new_fac, operator.le):
                             unit_sign = -unit_sign
                         elif not self.is_factor_known(-new_fac, operator.le):
