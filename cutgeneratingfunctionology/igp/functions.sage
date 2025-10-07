@@ -1513,11 +1513,11 @@ def piecewise_function_from_breakpoints_slopes_and_values(bkpt, slopes, values, 
     if field is None:
         field = default_field
     # global symb_values
-    if slopes is None:
+    if slopes is None: # make order assumptions in these functions, remove != when possible.
         symb_values = bkpt + values
         field_values = nice_field_values(symb_values, field)
         bkpt, values = field_values[0:len(bkpt)], field_values[-len(values):]
-        slopes = [(values[i+1]-values[i])/(bkpt[i+1]-bkpt[i]) if bkpt[i+1] != bkpt[i] else 0 for i in range(len(bkpt)-1)] 
+        slopes = [(values[i+1]-values[i])/(bkpt[i+1]-bkpt[i]) if bkpt[i+1] > bkpt[i] else 0 for i in range(len(bkpt)-1)] 
     else:
         symb_values = bkpt + slopes + values
         field_values = nice_field_values(symb_values, field)

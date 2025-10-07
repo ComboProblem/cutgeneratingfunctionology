@@ -862,13 +862,15 @@ class ParametricRealField(Field):
                     raise ParametricRealFieldInconsistencyError("New constant constraint {} {} {} is not satisfied".format(lhs, op, rhs))
                 else:
                     raise ParametricRealFieldInconsistencyError("New constraint {} {}  {} is not satisfied by the test point".format(lhs, op, rhs))
-        else: #A numerical evaluation of the expression has failed. Assume the partial evaluation of the expression holds.
+        else: # A numerical evaluation of the expression has failed. Assume the partial evaluation of the expression holds.
             comparison_val_or_expr = self._partial_eval_factor(comparison)
             if comparison_val_or_expr in base_ring:
                 if not op(comparison_val_or_expr, 0):
                     raise ParametricRealFieldInconsistencyError("New constant constraint {} {} {} is not satisfied".format(lhs, op, rhs))
-            else: # comparision_val_or_expr is algebraic expression, assume the comparison here is comparionsion_val_or_expr.
+            else: # comparision_val_or_expr is symobolic expression, assume the comparison here is comparionsion_val_or_expr.
                 comparison = comparison_val_or_expr
+                self.record_factor(comparison, op)
+                return
         if comparison in base_ring:
             return
         if comparison.denominator() == 1 and comparison.numerator().degree() == 1:

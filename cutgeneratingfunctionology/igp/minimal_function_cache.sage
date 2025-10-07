@@ -3,7 +3,7 @@ from itertools import pairwise
 from cutgeneratingfunctionology.igp import *
 import csv
 import os
-
+from cutgeneratingfunctionology.spam.basic_semialgebraic import EmptyBSA
 def mod_one(x):
     if x >= 0:
         return x - int(x)
@@ -77,7 +77,7 @@ def nnc_poly_from_bkpt(bkpt, backend=None):
     vals = bkpt_vals[0:n]
     for i in range(0,n):
         coord_names.append('lambda'+str(i))
-    K = ParametricRealField(names=coord_names, values = vals, mutable_values=True, big_cells=True, partial_test_point_mode=True, default_backend=backend)
+    K = ParametricRealField(names=coord_names, values = vals, mutable_values=True, big_cells=True)
     logging.disable(logging.INFO)
     K.gens()[0] == 0
     for i in range(n-1):
@@ -133,7 +133,7 @@ class BreakpointComplexClassContainer:
 
     def get_nnc_poly_from_bkpt(self):
         for bkpt in self._data:
-            yield nnc_poly_from_bkpt(bkpt, self._backend)
+            yield nnc_poly_from_bkpt(bkpt)
 
     def num_rep_elems(self):
         return len(self._data)
@@ -208,7 +208,7 @@ def assume_minimality(bkpt, f_index, backend=None):
     for i in range(1,n):
         coord_names.append('gamma'+str(i))
     logging.disable(logging.INFO)
-    K = ParametricRealField(names=coord_names, values = vals, mutable_values=True, big_cells=True, partial_test_point_mode=True, default_backend=backend)
+    K = ParametricRealField(names=coord_names, values = vals, mutable_values=True, big_cells=True, allow_refinement=False)
     for i in range(n-1):
         K.gens()[i+n-1] <=1
         K.gens()[i+n-1] > 0
@@ -219,15 +219,17 @@ def assume_minimality(bkpt, f_index, backend=None):
         vert
     for vert in generate_assumed_symmetric_vertices_continuous(h, K.gens()[f_index-1], [0] + K.gens()[0:n-1] + [1]):
         vert
-    for i in range(n):
-        K.gens()[i] == bkpt[i]
-    K.find_test_point()
+    try:
+        K.find_test_point()
+    except EmptyBSA:
+        return
     h_2 = piecewise_function_from_breakpoints_and_values([0]+list(K._values[0:n-1])+[1], [0] + list(K._values[n-1:2*n-2])+[0])
     is_minimal = minimality_test(h_2)
     if is_minimal:
         rep_bkpt = [0] + list(K._values[0:n-1])
         v = [0] + list(K._values[n-1:2*n-2])
         return (rep_bkpt, v)
+    return
 
 
 
@@ -305,7 +307,7 @@ class PiMinContContainer:
         else:
             logging.warning("Generating representative elements. This might take a while.")
             bkpts = make_bkpts_with_len_n(self._n)
-            self._data = find_minimal_function_reps_from_bkpts(bkpts, self._backend)
+            self._data = find_minimal_function_reps_from_bkpts(bkpts)
 
     def __repr__(self):
         return "Space of minimal functions with at most {} breakpoints parameterized by breakpoints and values using semialgebraic sets.".format(self._n)

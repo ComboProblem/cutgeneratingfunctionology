@@ -176,21 +176,21 @@ class ParametricRealFieldElement(FieldElement):
             except FactorUndetermined:
                 # With a partial evaluation, assume the written inequality is true.
                 true_op = op
-            if true_op == op_LT:
-                left.parent().assume_comparison(left - right, operator.lt)
-            elif true_op == op_GT:
-                left.parent().assume_comparison(left - right, operator.gt)
-            elif true_op == op_EQ:
-                left.parent().assume_comparison(right - left, operator.eq)
-            elif true_op == op_LE:
-                left.parent().assume_comparison(left - right, operator.le)
-            elif true_op == op_GE:
-                left.parent().assume_comparison(left - right, operator.ge)
-            elif true_op == op_NE:
-                left.parent().assume_comparison(right - left, operator.ne)
-            else:
-                raise ValueError("{} is not a valid richcmp operator".format(op))
-            return True
+                if true_op == op_LT:
+                    left.parent().assume_comparison(left - right, operator.lt)
+                elif true_op == op_GT:
+                    left.parent().assume_comparison(left - right, operator.gt)
+                elif true_op == op_EQ:
+                    left.parent().assume_comparison(right - left, operator.eq)
+                elif true_op == op_LE:
+                    left.parent().assume_comparison(left - right, operator.le)
+                elif true_op == op_GE:
+                    left.parent().assume_comparison(left - right, operator.ge)
+                elif true_op == op_NE:
+                    left.parent().assume_comparison(right - left, operator.ne)
+                else:
+                    raise ValueError("{} is not a valid richcmp operator".format(op))
+                return True
 
     def __abs__(self):
         """
