@@ -164,9 +164,12 @@ class BreakpointComplexClassContainer:
             out_file = open(output_file, "w")
             data_writer = csv.writer(out_file, csv.QUOTE_NONE)
             for row in range(max_rows):
-                data_writer.writerow(self._data[max_rows * file_number + row])
+                try:
+                    data_writer.writerow(self._data[max_rows * file_number + row])
+                except IndexError:
+                    break
             out_file.close()
-            output_file = file_name_base[:-1]+"{}".format(file_number)
+            output_file = file_name_base[:-1]+"{}".format(file_number)+".csv"
 
 
 def generate_assumed_symmetric_vertices_continuous(fn, f, bkpt):
