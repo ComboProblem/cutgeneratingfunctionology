@@ -163,8 +163,8 @@ class BreakpointComplexClassContainer:
         for file_number in range(num_files):
             out_file = open(output_file, "w")
             data_writer = csv.writer(out_file, csv.QUOTE_NONE)
-            for row in range(max_row):
-                data_writer.writerow(self._data[max_row * file_number + row])
+            for row in range(max_rows):
+                data_writer.writerow(self._data[max_rows * file_number + row])
             out_file.close()
             output_file = file_name_base[:-1]+"{}".format(file_number)
 
