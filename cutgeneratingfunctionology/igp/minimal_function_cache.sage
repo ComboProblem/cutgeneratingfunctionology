@@ -383,7 +383,7 @@ class PiMinContContainer:
             num_files = len(self._data)//max_rows + 1
             file_name_base = file_name_base + "_part_0"
         if max_rows is None:
-            max_rows = 0
+            max_rows = len(self._data)
             num_files = 1
         output_file = file_name_base +".csv"
         for file_number in range(num_files):
