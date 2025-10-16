@@ -389,9 +389,9 @@ class PiMinContContainer:
         for file_number in range(num_files):
             out_file = open(output_file, "w")
             data_writer = csv.writer(out_file, csv.QUOTE_NONE)
-            for row in range(max_row):
+            for row in range(max_rows):
                 try:
-                    data_writer.writerow(self._data[max_row * file_number + row])
+                    data_writer.writerow(self._data[max_rows * file_number + row])
                 except IndexError:
                     break
             out_file.close()
