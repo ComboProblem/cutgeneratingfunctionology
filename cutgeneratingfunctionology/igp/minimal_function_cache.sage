@@ -384,6 +384,7 @@ class PiMinContContainer:
             file_name_base = file_name_base + "_part_0"
         if max_rows is None:
             max_rows = 0
+            num_files = 1
         output_file = file_name_base +".csv"
         for file_number in range(num_files):
             out_file = open(output_file, "w")
