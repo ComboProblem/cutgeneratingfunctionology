@@ -4,10 +4,13 @@ from cutgeneratingfunctionology.igp import *
 import csv
 import os
 from cutgeneratingfunctionology.spam.basic_semialgebraic import EmptyBSA
+    
+
 def mod_one(x):
     if x >= 0:
         return x - int(x)
     return x - int(x) + 1
+
 
 def add_breakpoint(bkpt):
     """
@@ -91,6 +94,130 @@ def nnc_poly_from_bkpt(bkpt, backend=None):
     return K.make_proof_cell().bsa
 
 
+def generate_assumed_symmetric_vertices_continuous(fn, f, bkpt):
+    """
+    Assumes the symmetry condition holds for all vertices (x,y) in bkpt's breakpoints complex
+    such that x+y equiv f.
+    """
+    for i in range(len(bkpt)):
+        x = bkpt[i]
+        if x == f:
+            continue
+        if x < f:
+            y = f - x
+        else:
+            y = 1 + f - x
+        fn(x) + fn(y) == 1
+        yield (x, y, 0, 0)
+
+
+def value_nnc_polyhedron(bkpt, f_index):
+    """
+    For a given ``bkpt`` seqeunce and ``f_index``, find the value polyhedron which assumes pi_(bkpt, v) is minimal.
+    """
+    n = len(bkpt)
+    assert(n >= 2)
+    assert(f_index >= 1)
+    assert(f_index <= n - 1)
+    coord_names = []
+    val = [None]*(n-1)
+    for i in range(1,n):
+        coord_names.append('gamma'+str(i))
+    logging.disable(logging.INFO)
+    K = ParametricRealField(names=coord_names, values = val, mutable_values=True, big_cells=True, allow_refinement=False)
+    for i in range(n-1):
+        K.gens()[i] <=1
+        K.gens()[i] > 0
+    h = piecewise_function_from_breakpoints_and_values(bkpt + [1], [0] + K.gens() + [0], merge=False)
+    # Assumes minimality for the partially defined function.
+    for vert in generate_type_1_vertices_continuous(h, operator.ge, bkpt + [1]):
+        vert
+    for vert in generate_type_2_vertices_continuous(h, operator.ge, bkpt + [1]):
+        vert
+    for vert in generate_assumed_symmetric_vertices_continuous(h, bkpt[f_index], bkpt + [1]):
+        vert
+    return K._bsa
+
+def breakpoint_seq_and_value_nnc_polyhedron(bkpt, f_index):
+    """
+    For a given ``bkpt`` seqeunce and ``f_index``, find the breakpoint and value NNC polyhedron which assumes pi_(b, v) is minimal and Delta mathcal P_bkpt  is isomorphic to Delta mathcal P_b. 
+    """
+    n = len(bkpt)
+    assert(n >= 2)
+    assert(f_index >= 1)
+    assert(f_index <= n - 1)
+    coord_names = []
+    bkpt_vals = bkpt
+    vals = bkpt_vals[1:n]+ [None]*(n-1)
+    for i in range(1,n):
+        coord_names.append('lambda'+str(i))
+    for i in range(1,n):
+        coord_names.append('gamma'+str(i))
+    logging.disable(logging.INFO)
+    K = ParametricRealField(names=coord_names, values = vals, mutable_values=True, big_cells=True, allow_refinement=False)
+    for i in range(n-1):
+        K.gens()[i+n-1] <=1
+        K.gens()[i+n-1] > 0
+    h = piecewise_function_from_breakpoints_and_values([0] + K.gens()[0:n-1] + [1], [0] + K.gens()[n-1:2*n-2] + [0], merge=False)
+    # Assumes minimality  for the partially defined function.
+    for vert in generate_type_1_vertices_continuous(h, operator.ge, [0] + K.gens()[0:n-1] + [1]):
+        vert
+    for vert in generate_type_2_vertices_continuous(h, operator.ge, [0] + K.gens()[0:n-1] + [1]):
+        vert
+    for vert in generate_assumed_symmetric_vertices_continuous(h, K.gens()[f_index-1], [0] + K.gens()[0:n-1] + [1]):
+        vert
+    return K._bsa
+
+
+def bsa_of_rep_element(bkpt, vals):
+    """
+    Given pi_(bkpt, vals) is {minimal, not minimal}, find BSA subset of R^(2n) such that (bkpt, vals) in BSA and for all p
+    in BSA, pi_p is {minimal, not minimal}.
+
+    INPUT: (bkpt, vals) are lists or vectors of length n and bkpt is a proper breakpoints sequence and vals
+    is the corresponding value parameters.
+
+    OUTPUT: A basic semialgebraic set.
+    """
+    n = len(bkpt)
+    assert(n>=2)
+    coord_names = []
+    for i in range(0,n):
+        coord_names.append('lambda'+str(i))
+    for i in range(0,n):
+        coord_names.append('gamma'+str(i))
+    logging.disable(logging.INFO)
+    K = ParametricRealField(names=coord_names, values = bkpt+vals, big_cells=True)
+    h = piecewise_function_from_breakpoints_and_values([0] + K.gens()[1:n] + [1], [0] + K.gens()[n+1:2*n] + [0], merge=False)
+    minimality_test(h)
+    return K.make_proof_cell().bsa
+
+
+def find_minimal_function_reps_from_bkpts(bkpts, backend=None):
+    """
+    Finds representative elements of minimal functions from a given breakpoint sequence. 
+    """
+    rep_elems = []
+    for bkpt in bkpts:
+        n = len(bkpt)
+        for f_index in range(1, n):
+            poly_bsa = breakpoint_seq_and_value_nnc_polyhedron(bkpt, f_index)
+            gammas = poly_bsa.polynomial_map()[0].parent().gens()[n-1:]
+            lambdas = poly_bsa.polynomial_map()[0].parent().gens()[:n-1]
+            test_point = poly_bsa.upstairs().find_point()
+            test_bkpt = [0]
+            test_val = [0]
+            for lambda_i in lambdas:
+                test_bkpt.append(test_point[poly_bsa.v_dict()[lambda_i]])
+            for gamma_i in gammas:
+                test_val.append(test_point[poly_bsa.v_dict()[gamma_i]])
+            h = piecewise_function_from_breakpoints_and_values(test_bkpt+[1], test_val+[0])
+            if not minimality_test(h): # test bkpt doesn't make a valid minimal function, the statement still holds with original bkpt
+                test_bkpt = bkpt
+            rep_elems.append((test_bkpt, test_val))
+    return rep_elems
+
+
 class BreakpointComplexClassContainer:
     """
     A container for the family of breakpoint complexes for peicewise linear functions
@@ -155,6 +282,7 @@ class BreakpointComplexClassContainer:
         else:
             file_name_base =output_file_name_style
         if max_rows is not None:
+            assert(max_rows >= 1)
             num_files = len(self._data)//max_rows + 1
             file_name_base = file_name_base + "_part_0"
         if max_rows is None:
@@ -171,106 +299,6 @@ class BreakpointComplexClassContainer:
             out_file.close()
             output_file = file_name_base[:-1]+"{}".format(file_number+1)+".csv"
 
-
-def generate_assumed_symmetric_vertices_continuous(fn, f, bkpt):
-    """
-    Assumes the symmetry condition holds for all vertices (x,y) in bkpt's breakpoints complex
-    such that x+y equiv f.
-    """
-    for i in range(len(bkpt)):
-        x = bkpt[i]
-        if x == f:
-            continue
-        if x < f:
-            y = f - x
-        else:
-            y = 1 + f - x
-        fn(x) + fn(y) == 1
-        yield (x, y, 0, 0)
-
-
-def assume_minimality(bkpt, f_index, backend=None):
-    """
-    Given a breakpoint sequence, bkpt, and an index for f, f_index, determine if there is a (rep_bkpt, v)
-    such that pi_(rep_bkpt,v) is minimal, pi_(bkpt,v)(lambda_f_index)=1, and rep_bkpt's breakpoint complex
-    is isomorphic to bkpt's breakpoint complex.
-
-    INPUT: bkpt a list or vector of length n. bkpt is assumed to be breakpoint sequence, f_index an integer.
-
-    OUTPUT: (rep_bkpt, v), a pair of lists of length n with the described property.
-    """
-    n = len(bkpt)
-    assert(n >= 2)
-    assert(f_index >= 1)
-    assert(f_index <= n - 1)
-    coord_names = []
-    bkpt_vals = bkpt
-    vals = bkpt_vals[1:n]+ [None]*(n-1)
-    for i in range(1,n):
-        coord_names.append('lambda'+str(i))
-    for i in range(1,n):
-        coord_names.append('gamma'+str(i))
-    logging.disable(logging.INFO)
-    K = ParametricRealField(names=coord_names, values = vals, mutable_values=True, big_cells=True, allow_refinement=False)
-    for i in range(n-1):
-        K.gens()[i+n-1] <=1
-        K.gens()[i+n-1] > 0
-    h = piecewise_function_from_breakpoints_and_values([0] + K.gens()[0:n-1] + [1], [0] + K.gens()[n-1:2*n-2] + [0], merge=False)
-    for vert in generate_type_1_vertices_continuous(h, operator.ge, [0] + K.gens()[0:n-1] + [1]):
-        vert
-    for vert in generate_type_2_vertices_continuous(h, operator.ge, [0] + K.gens()[0:n-1] + [1]):
-        vert
-    for vert in generate_assumed_symmetric_vertices_continuous(h, K.gens()[f_index-1], [0] + K.gens()[0:n-1] + [1]):
-        vert
-    try:
-        K.find_test_point()
-    except EmptyBSA:
-        return
-    h_2 = piecewise_function_from_breakpoints_and_values([0]+list(K._values[0:n-1])+[1], [0] + list(K._values[n-1:2*n-2])+[0])
-    is_minimal = minimality_test(h_2)
-    if is_minimal:
-        rep_bkpt = [0] + list(K._values[0:n-1])
-        v = [0] + list(K._values[n-1:2*n-2])
-        return (rep_bkpt, v)
-    return
-
-
-
-def bsa_of_rep_element(bkpt, vals):
-    """
-    Given pi_(bkpt, vals) is {minimal, not minimal}, find BSA subset of R^(2n) such that (bkpt, vals) in BSA and for all p
-    in BSA, pi_p is {minimal, not minimal}.
-
-    INPUT: (bkpt, vals) are lists or vectors of length n and bkpt is a proper breakpoints sequence and vals
-    is the corresponding value parameters.
-
-    OUTPUT: A basic semialgebraic set.
-    """
-    n = len(bkpt)
-    assert(n>=2)
-    coord_names = []
-    for i in range(0,n):
-        coord_names.append('lambda'+str(i))
-    for i in range(0,n):
-        coord_names.append('gamma'+str(i))
-    logging.disable(logging.INFO)
-    K = ParametricRealField(names=coord_names, values = bkpt+vals, big_cells=True)
-    h = piecewise_function_from_breakpoints_and_values([0] + K.gens()[1:n] + [1], [0] + K.gens()[n+1:2*n] + [0], merge=False)
-    minimality_test(h)
-    return K.make_proof_cell().bsa
-
-
-def find_minimal_function_reps_from_bkpts(bkpts, backend=None):
-    """
-    Finds representative elements of minimal functions if they exist from the given breakpoint sequence.
-    """
-    data = []
-    for bkpt in bkpts:
-        for i in range(1, len(bkpt)):
-            result = assume_minimality(bkpt, i, backend)
-            if result is not None:
-                data.append(result)
-    return data
 
 class PiMinContContainer:
     """
@@ -296,17 +324,19 @@ class PiMinContContainer:
             file_names = kwrds["load_bkpt_data"].split(",")
             bkpts = []
             for file_name in file_names:
-                file = open(file_name, "r")
-                bkpts += [eval(preparse(data)) for data in list(csv.reader(file))]
-                close(file)
+                with open(file_name, newline='' ) as csvfile:
+                    file_reader = csv.reader(csvfile)
+                    for row in file_reader:
+                        bkpts.append([eval(preparse(data)) for data in row])
             self._data = find_minimal_function_reps_from_bkpts(bkpts)
         elif "load_bkpt_data" not in kwrds.keys() and "load_rep_elem_data" in kwrds.keys():
-            file_names = kwrds["load_rep_elem_data"].split(",")
+            file_names = kwrds["load_rep_elem_data"].strip(" ").split(",")
             self._data = []
             for file_name in file_names:
-                file = open(file_name, "r")
-                self._data += [(eval(preparse(data[0])), eval(preparse(data[1]))) for data in list(csv.reader(file))]
-                file.close()
+                with open(file_name, newline='' ) as csvfile:
+                    file_reader = csv.reader(csvfile)
+                    for row in file_reader:
+                        self._data.append([eval(preparse(data)) for data in row])
         else:
             logging.warning("Generating representative elements. This might take a while.")
             bkpts = make_bkpts_with_len_n(self._n)
@@ -349,6 +379,7 @@ class PiMinContContainer:
         else:
             file_name_base =output_file_name_style
         if max_rows is not None:
+            assert(max_rows >= 1)
             num_files = len(self._data)//max_rows + 1
             file_name_base = file_name_base + "_part_0"
         if max_rows is None:
