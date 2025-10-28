@@ -20,8 +20,8 @@ from cutgeneratingfunctionology.spam.basic_semialgebraic_local import BasicSemia
 from cutgeneratingfunctionology.spam.semialgebraic_mathematica import BasicSemialgebraicSet_mathematica, from_mathematica
 from cutgeneratingfunctionology.spam.basic_semialgebraic_groebner_basis import BasicSemialgebraicSet_groebner_basis
 from cutgeneratingfunctionology.spam.polyhedral_complex import PolyhedralComplex
-from cutgeneratingfunctionology.shared.EvaluationExceptions import FactorUndetermined
 from .parametric_family import Classcall, ParametricFamily_base, ParametricFamily
+from cutgeneratingfunctionology.spam.exceptions import *
 
 debug_new_factors = False
 debug_cell_exceptions = False
@@ -46,18 +46,6 @@ from cutgeneratingfunctionology.spam.parametric_real_field_element import Parame
 from sage.rings.ring import Field
 import sage.rings.number_field.number_field_base as number_field_base
 from sage.structure.coerce_maps import CallableConvertMap
-
-
-class ParametricRealFieldFrozenError(ValueError):
-    pass
-
-
-class ParametricRealFieldInconsistencyError(ValueError):
-    pass
-
-
-class ParametricRealFieldRefinementError(ValueError):
-    pass
 
 
 from contextlib import contextmanager
@@ -601,15 +589,14 @@ class ParametricRealField(Field):
             ...
             ParametricRealFieldInconsistencyError: New constant constraint...
 
-        TESTS for consistency checks when testpoint values is None::
+        When a test point value is ``None``, consistency is delegated to the underlying BSA::
 
             sage: K.<a,b> = ParametricRealField([2, 1], big_cells=True, mutable_values=True, allow_refinement=False)
             sage: assert b>0
             sage: K.remove_test_point()
             sage: K.assume_comparison(b.sym(), operator.lt, 0)
-            Traceback (most recent call last):
-            ...
-            ParametricRealFieldInconsistencyError...
+            sage: K._bsa
+            BasicSemialgebraicSet_veronese(BasicSemialgebraicSet_polyhedral_ppl_NNC_Polyhedron(Constraint_System {-1==0}, names=[x0]), polynomial_map=[b])
 
         User code should not rely on whether assumptions regarding
         the nonvanishing of denominators are recorded::
@@ -1065,7 +1052,7 @@ class ParametricRealField(Field):
                             eq_factors.append(new_fac)
                     except FactorUndetermined:
                         eq_factors.append(new_fac) #??? or pass?
-                        #This doesn't matter for now because under this branch  self._allow_refinement=True, and testpoint value is not removed, so  the exception FactorUndetermined should not happen.  
+                        #This doesn't matter for now because under this branch  self._allow_refinement=True, and testpoint value is not removed, so  the exception FactorUndetermined should not happen.
                         #In the future if the code in big_cells_impl changes and this exception happens, it is still safer to eq_factors.append(new_fac). T
                         #This could result in smaller cell (which is allowed). With "pass" it may raise error in corner cases, such as when the removed testpoint value was the only eq factor without which there would be a sign contradiction.
                 for new_fac in lt_factors:
