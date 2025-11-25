@@ -25,8 +25,8 @@ def add_breakpoint(bkpt):
     TESTS::
     >>> add_breakpoint([0])
     [[0, 3/4], [0, 1/2], [0, 1/4]]
-    >>> add_breakpoint([0,1/3])
     [[0, 1/12, 1/3], [0, 1/6, 1/3], [0, 1/4, 1/3], [0, 1/3, 2/3], [0, 1/3, 5/12], [0, 1/3, 1/2], [0, 1/3, 7/12], [0, 1/3, 5/6]]
+    >>> add_breakpoint([0,1/3])
     """
     possible_new_seqs = []
     possible_eq_lambda_star = [b/2 for b in bkpt+[1]] + [(1+b)/2 for b in bkpt]
@@ -86,12 +86,34 @@ def nnc_poly_from_bkpt(bkpt, backend=None):
     for i in range(n-1):
         K.gens()[i] < K.gens()[i+1]
     K.gens()[n-1] < 1
-    h = piecewise_function_from_breakpoints_and_values([0] + K.gens()[0:n-1] + [1], [0]*(n+1), merge=False)
-    for vert in generate_type_1_vertices_continuous(h, operator.ge, [0] + K.gens()[0:n-1] + [1]):
-        vert
-    for vert in generate_type_2_vertices_continuous(h, operator.ge, [0] + K.gens()[0:n-1] + [1]):
-        vert
-    return K.make_proof_cell().bsa
+    # write intervals
+    bkpt_right_invervals = [ right_open_interval(lambda_k, lambda_k_plus_one) for lambda_k, lambda_k_plus_one in zip(K.gens(), K.gens()[1:]+[1]) ]
+
+    # This next block of writes (in a mathematical way) a description of the complex in terms of the breakpoint parameters for 
+    # type two verticies along the line y=x in [0,1)times [0,1). These inequalities are necessary and sufficient to detemine a bkpt complex.  
+    # There is likely a shorter way of writing this block of code. 
+    print(bkpt_right_invervals)
+    for lambda_i in K.gens():
+        for interval in bkpt_right_invervals:
+            if 2*lambda_i >= 1:
+                 if is_pt_in_interval(interval, 2*lambda_i -1):
+                     if 2*lambda_i - 1 == interval[0]: # alias for lambda_k
+                         2*lambda_i - 1 == interval[0]
+                         break
+                     else:
+                         interval[0] < 2*lambda_i - 1
+                         2*lambda_i - 1 < interval[1]
+                         break
+            else:
+                if is_pt_in_interval(interval, 2*lambda_i):
+                     if 2*lambda_i == interval[0]: # alias for lambda_k
+                         2*lambda_i == interval[0]
+                         break
+                     else:
+                         interval[0] < 2*lambda_i
+                         2*lambda_i < interval[1]
+                         break
+    return K._bsa
 
 
 def generate_assumed_symmetric_vertices_continuous(fn, f, bkpt):
@@ -252,7 +274,7 @@ class BreakpointComplexClassContainer:
             self._data = make_bkpts_with_len_n(self._n)
 
     def __repr__(self):
-        return "Container of a family of breakpoint"
+        return f"Container for the space breakpoint sequences of length {self._n} under equivlance of polyhedral complexes."
 
     def get_rep_elems(self):
         for bkpt in self._data:
@@ -260,7 +282,8 @@ class BreakpointComplexClassContainer:
 
     def get_nnc_poly_from_bkpt(self):
         for bkpt in self._data:
-            yield nnc_poly_from_bkpt(bkpt)
+            for f_index in range(1,n):
+                yield nnc_poly_from_bkpt(bkpt, f_index)
 
     def num_rep_elems(self):
         return len(self._data)
