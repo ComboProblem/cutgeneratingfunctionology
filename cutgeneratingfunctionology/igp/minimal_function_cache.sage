@@ -4,48 +4,110 @@ from cutgeneratingfunctionology.igp import *
 import csv
 import os
 from cutgeneratingfunctionology.spam.basic_semialgebraic import EmptyBSA
-    
 
-def mod_one(x):
-    if x >= 0:
-        return x - int(x)
-    return x - int(x) + 1
+class RepElemGenFailure(Exception):
+    pass
 
 
-def add_breakpoint(bkpt):
+def add_breakpoints_and_find_equiv_classes(bkpt_poly):
     """
-    Given a breakpoint sequence, creates a list of breakpoint sequences of length one more such that
-    each the breakpoint complex of each breakpoint sequence is not guaranteed to be isomorphic to any
-    other breakpoint sequence in the list.
-
-
-    INPUT: Assume vector or list of n breakpoints with lambda_0=0 and lambda_i<lambda_i+1<1 (i.e. a breakpoint sequence)
-    OUTPUT: List of vectors each of which is a breakpoint sequence with $n+1$ elements and no two polyhedral complexes based on the data from each breakpoint sequence is in the same isomoprhism class.
-
-    TESTS::
-    >>> add_breakpoint([0])
-    [[0, 3/4], [0, 1/2], [0, 1/4]]
-    [[0, 1/12, 1/3], [0, 1/6, 1/3], [0, 1/4, 1/3], [0, 1/3, 2/3], [0, 1/3, 5/12], [0, 1/3, 1/2], [0, 1/3, 7/12], [0, 1/3, 5/6]]
-    >>> add_breakpoint([0,1/3])
+    Takes dim k-1 breakpoint NNC polyhedron (as a :class:`BasicSemialgebraicSet_base`) and finds rep elements 
     """
-    possible_new_seqs = []
-    possible_eq_lambda_star = [b/2 for b in bkpt+[1]] + [(1+b)/2 for b in bkpt]
-    intervals_along_y_eq_x = sorted(list(set(tuple(bkpt + [1] + [b/2 for b in bkpt+[1]] + [(1+b)/2 for b in bkpt]))))
-    possible_ne_lambda_star = []
-    for lower_bound, upper_bound in pairwise(intervals_along_y_eq_x):
-        possible_ne_lambda_star.append(1/2 * (lower_bound + upper_bound))
-    possible_lambda_star = possible_eq_lambda_star + possible_ne_lambda_star
-    for lambda_star in possible_eq_lambda_star + possible_ne_lambda_star:
-        temp_bkpt = deepcopy(bkpt)
-        temp_bkpt.append(mod_one(lambda_star))
-        possible_new_seqs.append(sorted(temp_bkpt))
-    possible_new_seqs = [list(y) for y in set([tuple(x) for x in possible_new_seqs]) if len(set(y)) == len(y)]
-    return possible_new_seqs
+    # BSAs are highly mutable, work only with copies.
+    B_cap_N_b = copy(bkpt_poly)
+    B_cap_N_b.add_space_dimensions_and_embed(1)
+    # get new number of breakpoints
+    k = B_cap_N_b.ambient_dim()
+    # if k< 2:
+    #     raise ValueError("bkpt_poly should have space dim at least 1.")
+    model_bound_bkpts = [0]*k
+    model_bound_bkpts[k-1] = 1
+    # 0 < lambda_k <1
+    B_cap_N_b.add_linear_constraint(model_bound_bkpts, -1, operator.lt) # model bounds
+    B_cap_N_b.add_linear_constraint(model_bound_bkpts, 0, operator.gt) # model bounds 
+    bkpt_order = [0]*k
+    bkpt_order[k-2] = 1
+    bkpt_order[k-1] = -1
+    B_cap_N_b.add_linear_constraint(bkpt_order, 0, operator.lt) # order on bkpts
+    # print(B_cap_N_b)
+    # rep elem list 
+    rep_elems = []
+    for j in range(k-1):
+        for i in range(k):
+            for interval_w in [0,1]:
+                for line_w in [0,1]:
+                    # which interval is (lambda_k,lambda_k) located in?
+                    # modeled lambda_i op 2lambda_k - w < lambda_{i+1}
+                    for interval_op in [operator.lt, operator.eq, operator.gt]:
+                        for line_op in [operator.lt, operator.eq, operator.gt]:
+                            # highly mutable objects, operater on the copy
+                            B_cap_N_b_copy = copy(B_cap_N_b)
+                            lhs_i = [0]*k
+                            lhs_i[k-1] = -2
+                            lhs_i[i] = 1
+                            B_cap_N_b_copy.add_linear_constraint(lhs_i, interval_w, interval_op)
+                            lhs_i_plus_1 = [0]*k
+                            lhs_i_plus_1[k-1] = -2
+                            if i < k-1:
+                                lhs_i_plus_1[i+1] = 1            
+                                B_cap_N_b_copy.add_linear_constraint(lhs_i_plus_1, interval_w, operator.gt)
+                            else:
+                                B_cap_N_b_copy.add_linear_constraint(lhs_i_plus_1, interval_w + 1, operator.gt)
+                            if not B_cap_N_b_copy.is_empty():
+                                # does the line x+y equiv lambda_k mod 1 lie on/above/below (lambda_j,lambda_j)?
+                                # modeled by  2lambda_j op lambda_k + w
+                                lhs_j = [0]*k
+                                lhs_j[j] = 2
+                                lhs_j[k-1] = -1
+                                B_cap_N_b_copy.add_linear_constraint(lhs_j, -line_w, line_op)
+                                try:
+                                    rep_elem = B_cap_N_b_copy.find_point()
+                                    rep_elems.append(tuple(rep_elem))
+                                except EmptyBSA:
+                                    pass
+    return unique_list(rep_elems)
+
+def nnc_poly_from_bkpt_sequence(bkpt, backend=None):
+    n = len(bkpt)
+    # assert(n >= 2)
+    coord_names = []
+    bkpt_vals = bkpt
+    vals = bkpt_vals[0:n]
+    bkpt_extd = list(bkpt)+[1]
+    for i in range(0,n):
+        coord_names.append('lambda'+str(i))
+    K = ParametricRealField(names=coord_names, values = vals, mutable_values=True, big_cells=True)
+    logging.disable(logging.INFO)
+    K.gens()[0] == 0
+    for i in range(n-1):
+        K.gens()[i] < K.gens()[i+1]
+    K.gens()[n-1] < 1
+    for i in range(n):
+        for j in range(n):
+            if bkpt[i]+bkpt[j]>= 1:
+                w = 1
+            else:
+                w = 0
+            for k in range(n):
+                if bkpt_extd[k] < bkpt[i]+bkpt[j] - w and bkpt[i]+bkpt[j] - w < bkpt_extd[k+1]:
+                    if k != n-1:
+                        K.gens()[k] < K.gens()[i] + K.gens()[j] - w
+                        K.gens()[i] + K.gens()[j] - w < K.gens()[k+1]
+                    else:
+                        K.gens()[k] < K.gens()[i] + K.gens()[j] - w
+                        K.gens()[i] + K.gens()[j] - w < 1
+                elif bkpt_extd[k] == bkpt[i]+bkpt[j] - w:
+                    if k != n-1:
+                        K.gens()[k] == K.gens()[i] + K.gens()[j] - w
+                        K.gens()[i] + K.gens()[j] - w < K.gens()[k+1]
+                    else:
+                        K.gens()[k] == K.gens()[i] + K.gens()[j] - w
+                        K.gens()[i] + K.gens()[j] - w < 1                    
+    return K._bsa
 
 
-
-def make_bkpts_with_len_n(n, k=1, bkpts=None):
-    """
+def make_rep_bkpts_with_len_n(n, k=1, bkpts=None):
+    r"""
     Produce representative elements of every isomorphism class of breakpoints complexes for breakpoint sequences of length n.
 
     Note, this function does not check that the data input is correct and assume it is being used correctly.
@@ -63,57 +125,13 @@ def make_bkpts_with_len_n(n, k=1, bkpts=None):
     if k == 1 and bkpts is None:
         bkpts=[[0]]
     for bkpt in bkpts:
-        new_bkpts += add_breakpoint(bkpt)
-    new_bkpts = [list(y) for y in set([tuple(x) for x in new_bkpts])]
+        new_bkpts += add_breakpoints_and_find_equiv_classes(nnc_poly_from_bkpt_sequence(bkpt).upstairs())
+    new_bkpts = unique_list(new_bkpts)
     k += 1
     if k == n:
         return new_bkpts
     else:
-        return make_bkpts_with_len_n(n, k, new_bkpts)
-
-
-def nnc_poly_from_bkpt(bkpt, backend=None):
-    n = len(bkpt)
-    assert(n >= 2)
-    coord_names = []
-    bkpt_vals = bkpt
-    vals = bkpt_vals[0:n]
-    for i in range(0,n):
-        coord_names.append('lambda'+str(i))
-    K = ParametricRealField(names=coord_names, values = vals, mutable_values=True, big_cells=True)
-    logging.disable(logging.INFO)
-    K.gens()[0] == 0
-    for i in range(n-1):
-        K.gens()[i] < K.gens()[i+1]
-    K.gens()[n-1] < 1
-    # write intervals
-    bkpt_right_invervals = [ right_open_interval(lambda_k, lambda_k_plus_one) for lambda_k, lambda_k_plus_one in zip(K.gens(), K.gens()[1:]+[1]) ]
-
-    # This next block of writes (in a mathematical way) a description of the complex in terms of the breakpoint parameters for 
-    # type two verticies along the line y=x in [0,1)times [0,1). These inequalities are necessary and sufficient to detemine a bkpt complex.  
-    # There is likely a shorter way of writing this block of code. 
-    print(bkpt_right_invervals)
-    for lambda_i in K.gens():
-        for interval in bkpt_right_invervals:
-            if 2*lambda_i >= 1:
-                 if is_pt_in_interval(interval, 2*lambda_i -1):
-                     if 2*lambda_i - 1 == interval[0]: # alias for lambda_k
-                         2*lambda_i - 1 == interval[0]
-                         break
-                     else:
-                         interval[0] < 2*lambda_i - 1
-                         2*lambda_i - 1 < interval[1]
-                         break
-            else:
-                if is_pt_in_interval(interval, 2*lambda_i):
-                     if 2*lambda_i == interval[0]: # alias for lambda_k
-                         2*lambda_i == interval[0]
-                         break
-                     else:
-                         interval[0] < 2*lambda_i
-                         2*lambda_i < interval[1]
-                         break
-    return K._bsa
+        return make_rep_bkpts_with_len_n(n, k, new_bkpts)
 
 
 def generate_assumed_symmetric_vertices_continuous(fn, f, bkpt):
@@ -141,13 +159,45 @@ def value_nnc_polyhedron(bkpt, f_index):
     assert(n >= 2)
     assert(f_index >= 1)
     assert(f_index <= n - 1)
+    if not isinstance(bkpt, list):
+        bkpt = list(bkpt)
     coord_names = []
-    val = [None]*(n-1)
-    for i in range(1,n):
+    val = [None]*(n)
+    for i in range(n):
         coord_names.append('gamma'+str(i))
     logging.disable(logging.INFO)
     K = ParametricRealField(names=coord_names, values = val, mutable_values=True, big_cells=True, allow_refinement=False)
-    for i in range(n-1):
+    K.gens()[0] == 0
+    for i in range(1, n):
+        K.gens()[i] <=1
+        K.gens()[i] > 0
+    h = piecewise_function_from_breakpoints_and_values(bkpt + [1], K.gens() + [0], merge=False)
+    # Assumes minimality for the partially defined function.
+    for vert in generate_type_1_vertices_continuous(h, operator.ge, bkpt + [1]):
+        vert
+    for vert in generate_type_2_vertices_continuous(h, operator.ge, bkpt + [1]):
+        vert
+    for vert in generate_assumed_symmetric_vertices_continuous(h, bkpt[f_index], bkpt + [1]):
+        vert
+    return K._bsa
+    
+def value_nnc_polyhedron_gamma_0_not_as_param(bkpt, f_index):
+    """
+    For a given ``bkpt`` seqeunce and ``f_index``, find the value polyhedron which assumes pi_(bkpt, v) is minimal.
+    """
+    n = len(bkpt)
+    assert(n >= 2)
+    assert(f_index >= 1)
+    assert(f_index <= n - 1)
+    if not isinstance(bkpt, list):
+        bkpt = list(bkpt)
+    coord_names = []
+    val = [None]*(n-1)
+    for i in range(1, n):
+        coord_names.append('gamma'+str(i))
+    logging.disable(logging.INFO)
+    K = ParametricRealField(names=coord_names, values = val, mutable_values=True, big_cells=True, allow_refinement=False)
+    for i in range(1, n):
         K.gens()[i] <=1
         K.gens()[i] > 0
     h = piecewise_function_from_breakpoints_and_values(bkpt + [1], [0] + K.gens() + [0], merge=False)
@@ -163,30 +213,36 @@ def value_nnc_polyhedron(bkpt, f_index):
 def breakpoint_seq_and_value_nnc_polyhedron(bkpt, f_index):
     """
     For a given ``bkpt`` seqeunce and ``f_index``, find the breakpoint and value NNC polyhedron which assumes pi_(b, v) is minimal and Delta mathcal P_bkpt  is isomorphic to Delta mathcal P_b. 
+    
+    EXAMPLES::
+    
     """
     n = len(bkpt)
     assert(n >= 2)
     assert(f_index >= 1)
-    assert(f_index <= n - 1)
+    assert(f_index <= n)
     coord_names = []
-    bkpt_vals = bkpt
-    vals = bkpt_vals[1:n]+ [None]*(n-1)
-    for i in range(1,n):
+    bkpt_vals = list(bkpt)
+    vals = bkpt_vals + [None]*(n)
+    for i in range(0,n):
         coord_names.append('lambda'+str(i))
-    for i in range(1,n):
+    for i in range(0,n):
         coord_names.append('gamma'+str(i))
     logging.disable(logging.INFO)
     K = ParametricRealField(names=coord_names, values = vals, mutable_values=True, big_cells=True, allow_refinement=False)
-    for i in range(n-1):
-        K.gens()[i+n-1] <=1
-        K.gens()[i+n-1] > 0
-    h = piecewise_function_from_breakpoints_and_values([0] + K.gens()[0:n-1] + [1], [0] + K.gens()[n-1:2*n-2] + [0], merge=False)
+    # gamma_0 == 0
+    K.gens()[n] == 0 
+    # 0 < gamma_i <= 1
+    for i in range(1, n):
+        K.gens()[i+n] <=1
+        K.gens()[i+n] > 0
+    h = piecewise_function_from_breakpoints_and_values(K.gens()[0:n] + [1], K.gens()[n:2*n] + [0], merge=False)
     # Assumes minimality  for the partially defined function.
-    for vert in generate_type_1_vertices_continuous(h, operator.ge, [0] + K.gens()[0:n-1] + [1]):
+    for vert in generate_type_1_vertices_continuous(h, operator.ge, K.gens()[0:n] + [1]):
         vert
-    for vert in generate_type_2_vertices_continuous(h, operator.ge, [0] + K.gens()[0:n-1] + [1]):
+    for vert in generate_type_2_vertices_continuous(h, operator.ge, K.gens()[0:n] + [1]):
         vert
-    for vert in generate_assumed_symmetric_vertices_continuous(h, K.gens()[f_index-1], [0] + K.gens()[0:n-1] + [1]):
+    for vert in generate_assumed_symmetric_vertices_continuous(h, K.gens()[f_index-1], [0] + K.gens()[0:n] + [1]):
         vert
     return K._bsa
 
@@ -200,6 +256,10 @@ def bsa_of_rep_element(bkpt, vals):
     is the corresponding value parameters.
 
     OUTPUT: A basic semialgebraic set.
+    
+    EXAMPLES::
+    
+    
     """
     n = len(bkpt)
     assert(n>=2)
@@ -210,7 +270,39 @@ def bsa_of_rep_element(bkpt, vals):
         coord_names.append('gamma'+str(i))
     logging.disable(logging.INFO)
     K = ParametricRealField(names=coord_names, values = bkpt+vals, big_cells=True)
-    h = piecewise_function_from_breakpoints_and_values([0] + K.gens()[1:n] + [1], [0] + K.gens()[n+1:2*n] + [0], merge=False)
+    h = piecewise_function_from_breakpoints_and_values(K.gens()[0:n] + [1], K.gens()[n:2*n] + [0], merge=False)
+    minimality_test(h)
+    return K.make_proof_cell().bsa
+
+
+def bsa_of_rep_element_pi_of_0_not_param(bkpt, vals):
+    """
+    Given pi_(bkpt, vals) is {minimal, not minimal}, find BSA subset of R^(2n) such that (bkpt, vals) in BSA and for all p
+    in BSA, pi_p is {minimal, not minimal}.
+
+    INPUT: (bkpt, vals) are lists or vectors of length n and bkpt is a proper breakpoints sequence and vals
+    is the corresponding value parameters.
+
+    OUTPUT: A basic semialgebraic set.
+    
+    EXAMPLES::
+    
+    
+    """
+    n = len(bkpt)
+    if not isinstance(bkpt, list):
+        bkpt = list(bkpt)
+    if not isinstance(vals, list):
+        vals = list(vals)
+    assert(n>=2)
+    coord_names = []
+    for i in range(1,n):
+        coord_names.append('lambda'+str(i))
+    for i in range(1,n):
+        coord_names.append('gamma'+str(i))
+    logging.disable(logging.INFO)
+    K = ParametricRealField(names=coord_names, values = bkpt[1:]+vals[1:], big_cells=True)
+    h = piecewise_function_from_breakpoints_and_values([0]+K.gens()[:n-1] + [1], [0] + K.gens()[n-1:] + [0], merge=False)
     minimality_test(h)
     return K.make_proof_cell().bsa
 
@@ -223,20 +315,19 @@ def find_minimal_function_reps_from_bkpts(bkpts, backend=None):
     for bkpt in bkpts:
         n = len(bkpt)
         for f_index in range(1, n):
-            poly_bsa = breakpoint_seq_and_value_nnc_polyhedron(bkpt, f_index)
-            gammas = poly_bsa.polynomial_map()[0].parent().gens()[n-1:]
-            lambdas = poly_bsa.polynomial_map()[0].parent().gens()[:n-1]
-            test_point = poly_bsa.upstairs().find_point()
-            test_bkpt = [0]
-            test_val = [0]
-            for lambda_i in lambdas:
-                test_bkpt.append(test_point[poly_bsa.v_dict()[lambda_i]])
+            poly_bsa = value_nnc_polyhedron(list(bkpt), f_index)
+            gammas = poly_bsa.polynomial_map()[0].parent().gens()
+            try:
+                test_point = poly_bsa.upstairs().find_point()
+            except EmptyBSA:
+                raise RepElemGenFailure("The value polyhedron {} is empty. This should not be empty. Double check inputs".format(poly_bsa))
+            test_val = []
             for gamma_i in gammas:
                 test_val.append(test_point[poly_bsa.v_dict()[gamma_i]])
-            h = piecewise_function_from_breakpoints_and_values(test_bkpt+[1], test_val+[0])
+            h = piecewise_function_from_breakpoints_and_values(list(bkpt)+[1], test_val+[0])
             if not minimality_test(h): # test bkpt doesn't make a valid minimal function, the statement still holds with original bkpt
-                test_bkpt = bkpt
-            rep_elems.append((test_bkpt, test_val))
+                raise ValueError("HELP! ({}, {}) paramaterized is not a minimal function but assuming a breakpoint sequence is input, this should be minimal. GL debugging.".format(bkpt, test_val))
+            rep_elems.append((bkpt, test_val))
     return rep_elems
 
 
@@ -244,6 +335,9 @@ class BreakpointComplexClassContainer:
     """
     A container for the family of breakpoint complexes for peicewise linear functions
     with at most n breakpoints.
+    
+    EXAMPLES::
+    
     """
     def __init__(self, n, **kwrds):
         self._n = n
@@ -256,7 +350,7 @@ class BreakpointComplexClassContainer:
         if "load_rep_elem_data" in kwrds.keys():
             if kwrds[load_rep_elem_data] is None:
                 logging.warning("Generating representative elements. This might take a while.")
-                self._data = make_bkpts_with_len_n(self._n)
+                self._data = make_rep_bkpts_with_len_n(self._n)
             else:
                 file_names = kwrds["load_bkpt_data"].split(",")
                 self._data = []
@@ -268,10 +362,10 @@ class BreakpointComplexClassContainer:
                     if kwrds[gen_elems_from_data] == True:
                         k = len(self._data[0])
                         if k < n:
-                            self._data = make_bkpts_with_len_n(n, k, self._data)
+                            self._data = make_rep_bkpts_with_len_n(n, k, self._data)
         else:
             logging.warning("Generating representative elements. This might take a while.")
-            self._data = make_bkpts_with_len_n(self._n)
+            self._data = make_rep_bkpts_with_len_n(self._n)
 
     def __repr__(self):
         return f"Container for the space breakpoint sequences of length {self._n} under equivlance of polyhedral complexes."
@@ -362,7 +456,7 @@ class PiMinContContainer:
                         self._data.append([eval(preparse(data)) for data in row])
         else:
             logging.warning("Generating representative elements. This might take a while.")
-            bkpts = make_bkpts_with_len_n(self._n)
+            bkpts = make_rep_bkpts_with_len_n(self._n)
             self._data = find_minimal_function_reps_from_bkpts(bkpts)
 
     def __repr__(self):
@@ -374,7 +468,7 @@ class PiMinContContainer:
 
     def get_rep_elems(self):
         for b, v in self._data:
-            yield (b, v)
+            yield (list(b), list(v))
 
     def get_rep_functions(self):
         for b, v in self._data:
@@ -419,3 +513,6 @@ class PiMinContContainer:
                     break
             out_file.close()
             output_file = file_name_base[:-1]+"{}".format(file_number+1)+".csv"
+
+
+### Plotting Utilties ###
