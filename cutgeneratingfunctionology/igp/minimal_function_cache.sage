@@ -151,10 +151,12 @@ def generate_assumed_symmetric_vertices_continuous(fn, f, bkpt):
         yield (x, y, 0, 0)
 
 
-def value_nnc_polyhedron(bkpt, f_index):
+def value_nnc_polyhedron_value_cords(bkpt, f_index):
     """
-    For a given ``bkpt`` seqeunce and ``f_index``, find the value polyhedron which assumes pi_(bkpt, v) is minimal.
+    For a given ``bkpt`` seqeunce and ``f_index``, write the value polyhedron as a BSA in only the value parameters. 
     """
+    # this saves a slight amount of overhead when detemrining points for the value polyhedron since the assumed
+    # minimality test does not have to entierly go though parametric real field.
     n = len(bkpt)
     assert(n >= 2)
     assert(f_index >= 1)
@@ -181,38 +183,38 @@ def value_nnc_polyhedron(bkpt, f_index):
         vert
     return K._bsa
     
-def value_nnc_polyhedron_gamma_0_not_as_param(bkpt, f_index):
-    """
-    For a given ``bkpt`` seqeunce and ``f_index``, find the value polyhedron which assumes pi_(bkpt, v) is minimal.
-    """
-    n = len(bkpt)
-    assert(n >= 2)
-    assert(f_index >= 1)
-    assert(f_index <= n - 1)
-    if not isinstance(bkpt, list):
-        bkpt = list(bkpt)
-    coord_names = []
-    val = [None]*(n-1)
-    for i in range(1, n):
-        coord_names.append('gamma'+str(i))
-    logging.disable(logging.INFO)
-    K = ParametricRealField(names=coord_names, values = val, mutable_values=True, big_cells=True, allow_refinement=False)
-    for i in range(1, n):
-        K.gens()[i] <=1
-        K.gens()[i] > 0
-    h = piecewise_function_from_breakpoints_and_values(bkpt + [1], [0] + K.gens() + [0], merge=False)
-    # Assumes minimality for the partially defined function.
-    for vert in generate_type_1_vertices_continuous(h, operator.ge, bkpt + [1]):
-        vert
-    for vert in generate_type_2_vertices_continuous(h, operator.ge, bkpt + [1]):
-        vert
-    for vert in generate_assumed_symmetric_vertices_continuous(h, bkpt[f_index], bkpt + [1]):
-        vert
-    return K._bsa
+# def value_nnc_polyhedron_gamma_0_not_as_param(bkpt, f_index):
+    # """
+    # For a given ``bkpt`` seqeunce and ``f_index``, find the value polyhedron which assumes pi_(bkpt, v) is minimal.
+    # """
+    # n = len(bkpt)
+    # assert(n >= 2)
+    # assert(f_index >= 1)
+    # assert(f_index <= n - 1)
+    # if not isinstance(bkpt, list):
+        # bkpt = list(bkpt)
+    # coord_names = []
+    # val = [None]*(n-1)
+    # for i in range(1, n):
+        # coord_names.append('gamma'+str(i))
+    # logging.disable(logging.INFO)
+    # K = ParametricRealField(names=coord_names, values = val, mutable_values=True, big_cells=True, allow_refinement=False)
+    # for i in range(1, n):
+        # K.gens()[i] <=1
+        # K.gens()[i] > 0
+    # h = piecewise_function_from_breakpoints_and_values(bkpt + [1], [0] + K.gens() + [0], merge=False)
+    # # Assumes minimality for the partially defined function.
+    # for vert in generate_type_1_vertices_continuous(h, operator.ge, bkpt + [1]):
+        # vert
+    # for vert in generate_type_2_vertices_continuous(h, operator.ge, bkpt + [1]):
+        # vert
+    # for vert in generate_assumed_symmetric_vertices_continuous(h, bkpt[f_index], bkpt + [1]):
+        # vert
+    # return K._bsa
 
-def breakpoint_seq_and_value_nnc_polyhedron(bkpt, f_index):
+def value_nnc_polyhedron(bkpt, f_index):
     """
-    For a given ``bkpt`` seqeunce and ``f_index``, find the breakpoint and value NNC polyhedron which assumes pi_(b, v) is minimal and Delta mathcal P_bkpt  is isomorphic to Delta mathcal P_b. 
+    For a given ``bkpt`` seqeunce and ``f_index``, write a base which is the value polyhedron corrospoding in the full space of parameters.
     
     EXAMPLES::
     
@@ -224,19 +226,21 @@ def breakpoint_seq_and_value_nnc_polyhedron(bkpt, f_index):
     coord_names = []
     bkpt_vals = list(bkpt)
     vals = bkpt_vals + [None]*(n)
-    for i in range(0,n):
+    for i in range(n):
         coord_names.append('lambda'+str(i))
-    for i in range(0,n):
+    for i in range(n):
         coord_names.append('gamma'+str(i))
     logging.disable(logging.INFO)
     K = ParametricRealField(names=coord_names, values = vals, mutable_values=True, big_cells=True, allow_refinement=False)
-    # gamma_0 == 0
+    # breakpoint parameters are the mesured breakpoint values. 
+    for i in range(n):
+        K.gens()[i] == bkpt[i]
+    # necessary conditions on value parameters
     K.gens()[n] == 0 
-    # 0 < gamma_i <= 1
     for i in range(1, n):
         K.gens()[i+n] <=1
         K.gens()[i+n] > 0
-    h = piecewise_function_from_breakpoints_and_values(K.gens()[0:n] + [1], K.gens()[n:2*n] + [0], merge=False)
+    h = piecewise_function_from_breakpoints_and_values(K.gens()[0:n]  + [1], K.gens()[n:2*n] + [0], merge=False)
     # Assumes minimality  for the partially defined function.
     for vert in generate_type_1_vertices_continuous(h, operator.ge, K.gens()[0:n] + [1]):
         vert
@@ -264,9 +268,9 @@ def bsa_of_rep_element(bkpt, vals):
     n = len(bkpt)
     assert(n>=2)
     coord_names = []
-    for i in range(0,n):
+    for i in range(n):
         coord_names.append('lambda'+str(i))
-    for i in range(0,n):
+    for i in range(n):
         coord_names.append('gamma'+str(i))
     logging.disable(logging.INFO)
     K = ParametricRealField(names=coord_names, values = bkpt+vals, big_cells=True)
@@ -315,7 +319,7 @@ def find_minimal_function_reps_from_bkpts(bkpts, backend=None):
     for bkpt in bkpts:
         n = len(bkpt)
         for f_index in range(1, n):
-            poly_bsa = value_nnc_polyhedron(list(bkpt), f_index)
+            poly_bsa = value_nnc_polyhedron_value_cords(list(bkpt), f_index)
             gammas = poly_bsa.polynomial_map()[0].parent().gens()
             try:
                 test_point = poly_bsa.upstairs().find_point()
@@ -464,7 +468,7 @@ class PiMinContContainer:
 
     def get_semialgebraic_sets(self):
         for b, v in self._data:
-            yield bsa_of_rep_element(b, v)
+            yield bsa_of_rep_element(list(b), list(v))
 
     def get_rep_elems(self):
         for b, v in self._data:
