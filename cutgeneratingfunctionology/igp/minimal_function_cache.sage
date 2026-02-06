@@ -9,8 +9,8 @@ from cutgeneratingfunctionology.spam.basic_semialgebraic import EmptyBSA
 ### bkpt is assumed to be a breakpoint sequence of length n>= 2. 
 ### Breakpoint sequence are sorted lists of real numbers in [0,1). 
 ### A breakpoint sequences should always have 0 as an element.
-
-### 
+### This is never strictly enforced in this file and it is assumed that
+### the user is always provided a breakpoint sequence. 
 
 
 class RepElemGenFailure(Exception):
@@ -137,6 +137,7 @@ def add_breakpoints_and_find_equiv_classes(bkpt_poly):
                                     pass
     return unique_list(rep_elems)
 
+
 def make_rep_bkpts_with_len_n(n, k=1, bkpts=None, backend=None):
     r"""
     Produce representative elements of every isomorphism class of breakpoints complexes for breakpoint sequences of length n.
@@ -258,7 +259,7 @@ def value_nnc_polyhedron(bkpt, f_index):
     
     EXAMPLES::
     >>> value_nnc_polyhedron([0,4/5], 1) # gmic with f=4/5
-    
+    BasicSemialgebraicSet_veronese(BasicSemialgebraicSet_polyhedral_ppl_NNC_Polyhedron(Constraint_System {x3-1==0, x2==0, 5*x1-4==0, x0==0}, names=[x0, x1, x2, x3]), polynomial_map=[lambda0, lambda1, gamma0, gamma1])
     """
     n = len(bkpt)
     assert(n >= 2)
@@ -287,7 +288,7 @@ def value_nnc_polyhedron(bkpt, f_index):
         vert
     for vert in generate_type_2_vertices_continuous(h, operator.ge, K.gens()[0:n] + [1]):
         vert
-    for vert in generate_assumed_symmetric_vertices_continuous(h, K.gens()[f_index-1], [0] + K.gens()[0:n] + [1]):
+    for vert in generate_assumed_symmetric_vertices_continuous(h, K.gens()[f_index], [0] + K.gens()[0:n] + [1]):
         vert
     return K._bsa
 
@@ -322,40 +323,6 @@ def bsa_of_rep_element(bkpt, vals):
     return K.make_proof_cell().bsa
 
 
-def bsa_of_rep_element_pi_of_0_not_param(bkpt, vals, backend=None):
-    """
-    Given pi_(bkpt, vals) is {minimal, not minimal}, find BSA subset of R^(2n) such that (bkpt, vals) in BSA and for all p
-    in BSA, pi_p is {minimal, not minimal}. The first entry of ``bkpt`` and ``vals`` is assuemd to be 0.
-
-    INPUT: 
-    - ``bkpt`` - a breakpoint seqeunce
-    - ``vals`` - list like of sage numerical types corrosponding values for the breakpoint sequence.
-    - ``backend`` - None, ``str(pplite)``
-
-    OUTPUT: A basic semialgebraic set.
-    
-    EXAMPLES::
-    
-    
-    """
-    n = len(bkpt)
-    if not isinstance(bkpt, list):
-        bkpt = list(bkpt)
-    if not isinstance(vals, list):
-        vals = list(vals)
-    assert(n>=2)
-    coord_names = []
-    for i in range(1,n):
-        coord_names.append('lambda'+str(i))
-    for i in range(1,n):
-        coord_names.append('gamma'+str(i))
-    logging.disable(logging.INFO)
-    K = ParametricRealField(names=coord_names, values = bkpt[1:]+vals[1:], big_cells=True)
-    h = piecewise_function_from_breakpoints_and_values([0]+K.gens()[:n-1] + [1], [0] + K.gens()[n-1:] + [0], merge=False)
-    minimality_test(h)
-    return K.make_proof_cell().bsa
-
-
 def find_minimal_function_reps_from_bkpts(bkpts, prove_minimality=True, backend=None):
     """
     Finds representative elements of minimal functions from a given breakpoint sequence.
@@ -365,11 +332,14 @@ def find_minimal_function_reps_from_bkpts(bkpts, prove_minimality=True, backend=
     - ``prove_minimality`` - bool, proves minimality of paramaterized function
     - ``backend`` - None, ``str(pplite)``
     
+    OUTPUT:
+    - List of tuples of lists 
+    
     EXAMPLES::
     
     >>> bkpts = make_rep_bkpts_with_len_n(2)
-    >>> rep_elems = find_minimal_function_reps_from_bkpts(bkpts)
-    >>> rep_elems
+    >>> find_minimal_function_reps_from_bkpts(bkpts)
+    [([0, 1/2], [0, 1]), ((0, 13/18), [0, 1]), ((0, 5/18), [0, 1])][((0, 1/2), [0, 1]), ((0, 13/18), [0, 1]), ((0, 5/18), [0, 1])]
     
     """
     rep_elems = []
@@ -389,7 +359,7 @@ def find_minimal_function_reps_from_bkpts(bkpts, prove_minimality=True, backend=
                 h = piecewise_function_from_breakpoints_and_values(list(bkpt)+[1], test_val+[0])
                 if not minimality_test(h): # The following error should never be raised when this function is used as intended.
                     raise ValueError(f"({bkpt}, {test_val}) paramaterized by breakpoints and values is not a minimal function but assuming a breakpoint sequence is input, this should be minimal.")
-            rep_elems.append((bkpt, test_val))
+            rep_elems.append((list(bkpt), test_val))
     return rep_elems
 
 
@@ -465,7 +435,7 @@ class BreakpointComplexClassContainer:
             bkpt_contained_in_cell = False
             for found_cell in cells_found:
                 if found_cell.contains(bkpt):
-                    bkpt_contained_in_cell = True:
+                    bkpt_contained_in_cell = True
                     break
             if not contained_in_cell:
                 cells_found.append(nnc_poly_from_bkpt_sequence(bkpt))
@@ -520,22 +490,28 @@ class PiMinContContainer:
     >>> all([minimality_test(pi) for pi in PiMin_4.get_rep_functions()])
     True
     >>> PiMin_4
+    Space of minimal functions with at most 4 breakpoints parameterized by breakpoints and values using semialgebraic sets.
     
-    A cell descrption is can be accessed::
+    A cell descrption of semialgebraic sets can be accessed::
     
-    >>> all([isinstance(cell, ) for cell in PiMin_4.get_semialgebraic_sets()])
+    >>> all([isinstance(cell, BasicSemialgebraicSet_base) for cell in PiMin_4.get_semialgebraic_sets()])
+    True
     
     Data is stored as repersenative elements. The number of repersentative elements grows quickly. ::
     
     >>> len([rep_elem for rep_elem in PiMin_4.get_rep_elems()])
+    987
     
     The container provides methods of writing data.::
     
     >>> PiMin_4.write_data()
     
-    One can load representative element data. ::
     
-    >>> PiMin_4_loaded_data = PiMinContContainer(4, 
+    Written data can be reused ::
+    
+    >>> PiMin_4_loaded_data = PiMinContContainer(4,  load_rep_elem_data="Pi_Min_4.csv")
+    >>> len([rep_elem for rep_elem in PiMin_4_loaded_data.get_rep_elems()])
+    987
     """
     def __init__(self, n, **kwrds):
         self._n = n
@@ -627,6 +603,6 @@ class PiMinContContainer:
                     break
             out_file.close()
             output_file = file_name_base[:-1]+"{}".format(file_number+1)+".csv"
-
+    ### TODO: Add method to make loaded objects the same as generated objects if they repersent the same space.
 
 ### Plotting Utilties ###
