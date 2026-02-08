@@ -4,6 +4,8 @@ from cutgeneratingfunctionology.igp import *
 import csv
 import os
 from cutgeneratingfunctionology.spam.basic_semialgebraic import EmptyBSA
+import logging
+logger = logging.getLogger(__name__)
 
 ### Note to future reader, from yours truely. ###
 ### bkpt is assumed to be a breakpoint sequence of length n>= 2. 
@@ -11,6 +13,10 @@ from cutgeneratingfunctionology.spam.basic_semialgebraic import EmptyBSA
 ### A breakpoint sequences should always have 0 as an element.
 ### This is never strictly enforced in this file and it is assumed that
 ### the user is always provided a breakpoint sequence. 
+
+# global defaults for logging from portions of CGF 
+log_paramateric_real_field = False
+log_pw_functions = False
 
 
 class RepElemGenFailure(Exception):
@@ -41,7 +47,6 @@ def nnc_poly_from_bkpt_sequence(bkpt, backend=None):
     for i in range(0,n):
         coord_names.append('lambda'+str(i))
     K = ParametricRealField(names=coord_names, values = vals, mutable_values=True, big_cells=True)
-    logging.disable(logging.INFO)
     K.gens()[0] == 0
     for i in range(n-1):
         K.gens()[i] < K.gens()[i+1]
@@ -176,9 +181,12 @@ def make_rep_bkpts_with_len_n(n, k=1, bkpts=None, backend=None):
         new_bkpts += add_breakpoints_and_find_equiv_classes(nnc_poly_from_bkpt_sequence(bkpt).upstairs())
     new_bkpts = unique_list(new_bkpts)
     k += 1
+
     if k == n:
+        logger.info(f"Breakpoints of length {n} have been generated. ")
         return new_bkpts
     else:
+        logger.info(f"Breakpoitns of lenght {k} have been generated. Now generating breakpoints of length{k+1}")
         return make_rep_bkpts_with_len_n(n, k, new_bkpts)
 
 
@@ -229,7 +237,6 @@ def value_nnc_polyhedron_value_cords(bkpt, f_index, backend =None):
     val = [None]*(n)
     for i in range(n):
         coord_names.append('gamma'+str(i))
-    logging.disable(logging.INFO)
     K = ParametricRealField(names=coord_names, values = val, mutable_values=True, big_cells=True, allow_refinement=False)
     K.gens()[0] == 0
     for i in range(1, n):
@@ -272,7 +279,6 @@ def value_nnc_polyhedron(bkpt, f_index):
         coord_names.append('lambda'+str(i))
     for i in range(n):
         coord_names.append('gamma'+str(i))
-    logging.disable(logging.INFO)
     K = ParametricRealField(names=coord_names, values = vals, mutable_values=True, big_cells=True, allow_refinement=False)
     # breakpoint parameters are the mesured breakpoint values. 
     for i in range(n):
@@ -316,7 +322,6 @@ def bsa_of_rep_element(bkpt, vals):
         coord_names.append('lambda'+str(i))
     for i in range(n):
         coord_names.append('gamma'+str(i))
-    logging.disable(logging.INFO)
     K = ParametricRealField(names=coord_names, values = bkpt+vals, big_cells=True)
     h = piecewise_function_from_breakpoints_and_values(K.gens()[0:n] + [1], K.gens()[n:2*n] + [0], merge=False)
     minimality_test(h)
@@ -384,7 +389,7 @@ class BreakpointComplexClassContainer:
                 self._backend = None
         if "load_rep_elem_data" in kwrds.keys():
             if kwrds[load_rep_elem_data] is None:
-                logging.warning("Generating representative elements. This might take a while.")
+                logger.info("Generating representative elements. This might take a while.")
                 self._data = make_rep_bkpts_with_len_n(self._n)
             else:
                 file_names = kwrds["load_bkpt_data"].split(",")
@@ -399,7 +404,7 @@ class BreakpointComplexClassContainer:
                         if k < n:
                             self._data = make_rep_bkpts_with_len_n(n, k, self._data)
         else:
-            logging.warning("Generating representative elements. This might take a while.")
+            logger.info("Generating representative elements. This might take a while.")
             self._data = make_rep_bkpts_with_len_n(self._n)
 
     def __repr__(self):
@@ -417,7 +422,7 @@ class BreakpointComplexClassContainer:
         return len(self._data)
 
     def add_one_bkpt_to_all(self):
-        logging.warning("Generating representative elements. This might take a while.")
+        logger.info("Generating representative elements. This might take a while.")
         self._data = make_bkpts_with_len_n(self._n+1, self._n, self._data)
         
     def covers_space(self):
@@ -539,7 +544,7 @@ class PiMinContContainer:
                     for row in file_reader:
                         self._data.append([eval(preparse(data)) for data in row])
         else:
-            logging.warning("Generating representative elements. This might take a while.")
+            logger.info("Generating representative elements. This might take a while.")
             bkpts = make_rep_bkpts_with_len_n(self._n)
             self._data = find_minimal_function_reps_from_bkpts(bkpts)
 
