@@ -1,7 +1,7 @@
 from six.moves import range
 import logging
 
-crazy_perturbation_examples_logger =  logging.getLogger("crazy_perturbation_examples.sage")
+crazy_perturbation_examples_logger =  logging.getLogger("cutgeneratingfunctionology.igp.crazy_perturbation_examples")
 crazy_perturbation_examples_logger.setLevel(logging.INFO)
 
 def kzh_discontinuous_bhk_irrational(f=4/5, d1=3/5, d2=5/40, a0=19/100, delta_ratio=sqrt(2)/3, bb=1/1000, c2=0, y1=1/10, y2=1/50, field=None):

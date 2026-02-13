@@ -1,7 +1,7 @@
 from six.moves import range
 import logging
 
-vertex_enumeration_logger = logging.getLogger("vertex_enumeration.py")
+vertex_enumeration_logger = logging.getLogger("cutgeneratingfunctionology.igp.vertex_enumeration")
 vertex_enumeration_logger.setLevel(logging.INFO)
 
 def vertex_enumeration(polytope, exp_dim=-1, vetime=False):

@@ -2,7 +2,7 @@ from six.moves import range
 from six.moves import zip
 import logging
 
-compendium_procedures_logger = logging.getLogger("compendium_procedures.sage")
+compendium_procedures_logger = logging.getLogger("cutgeneratingfunctionology.igp.compendium_procedures")
 compendium_procedures_logger.setLevel(logging.INFO)
 
 def transform_coho_interval(interval, shift, divisor):

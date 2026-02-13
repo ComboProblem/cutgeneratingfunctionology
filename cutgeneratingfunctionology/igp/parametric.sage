@@ -23,7 +23,7 @@ from cutgeneratingfunctionology.spam.polyhedral_complex import PolyhedralComplex
 from .parametric_family import Classcall, ParametricFamily_base, ParametricFamily
 import logging
 
-parametric_logger = logging.getLogger("parametric.sage")
+parametric_logger = logging.getLogger("cutgeneratingfunctionology.igp.parametric")
 parametric_logger.setLevel(logging.INFO)
 
 debug_new_factors = False

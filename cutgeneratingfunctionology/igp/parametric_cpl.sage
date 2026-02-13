@@ -1,7 +1,7 @@
 from six.moves import range
 import logging
 
-parametric_cpl_logger =  logging.getLogger("parametric_cpl.sage")
+parametric_cpl_logger =  logging.getLogger("cutgeneratingfunctionology.igp.parametric_cpl")
 parametric_cpl_logger.setLevel(logging.INFO)
 
 from .parametric_family import ParametricFamily_base

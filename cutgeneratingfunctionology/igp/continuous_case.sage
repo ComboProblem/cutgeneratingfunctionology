@@ -2,7 +2,7 @@ from six.moves import range
 from six.moves import zip
 import logging
 
-continuous_case_logger = logging.getLogger("continuous_case.sage")
+continuous_case_logger = logging.getLogger("cutgeneratingfunctionology.igp.continuous_case")
 continuous_case_logger.setLevel(logging.INFO)
 
 

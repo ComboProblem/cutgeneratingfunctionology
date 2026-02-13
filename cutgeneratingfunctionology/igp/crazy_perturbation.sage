@@ -1,7 +1,7 @@
 from six.moves import range
 import logging
 
-crazy_perturbation_logger = logging.getLogger("crazy_perturbation.sage")
+crazy_perturbation_logger = logging.getLogger("cutgeneratingfunctionology.igp.crazy_perturbation")
 crazy_perturbation_logger.setLevel(logging.INFO)
 
 # Reminder: need coerce all input to common RNF.

@@ -25,7 +25,7 @@ import sage.numerical.backends.glpk_backend as backend
 from six.moves import range
 import logging
 
-kslope_ppl_mip_logger = logging.getLogger("kslope_ppl_mip.py")
+kslope_ppl_mip_logger = logging.getLogger("cutgeneratingfunctionology.igp.kslope_ppl_mip")
 kslope_ppl_mip_logger.setLevel(logging.INFO)
 
 poly_is_included = Poly_Con_Relation.is_included()

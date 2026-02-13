@@ -1,7 +1,7 @@
 from six.moves import range
 import logging
 
-survey_examples_logger = logging.getLogger("survey_examples.sage")
+survey_examples_logger = logging.getLogger("cutgeneratingfunctionology.igp.survey_examples")
 survey_examples_logger.setLevel(logging.INFO)
 
 ## Various examples of functions that appear in the survey.

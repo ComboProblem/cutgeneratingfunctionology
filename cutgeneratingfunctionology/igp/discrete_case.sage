@@ -1,6 +1,6 @@
 import logging
 
-discrete_case_logger =  logging.getLogger("discrete_case.sage")
+discrete_case_logger =  logging.getLogger("cutgeneratingfunctionology.igp.discrete_case")
 discrete_case_logger.setLevel(logging.INFO)
 
 def generate_additive_faces_discrete(fn):

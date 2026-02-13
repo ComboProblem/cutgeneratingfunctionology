@@ -14,7 +14,7 @@ from itertools import chain
 from bisect import bisect_left
 import logging
 
-functions_logger = logging.getLogger("functions.sage")
+functions_logger = logging.getLogger("cutgeneratingfunctionology.igp.functions")
 functions_logger.setLevel(logging.INFO)
 
 

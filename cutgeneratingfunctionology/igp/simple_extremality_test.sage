@@ -1,7 +1,7 @@
 from six.moves import range
 import logging
 
-simple_extremality_test_logger = logging.getLogger("simple_extremality_test.sage")
+simple_extremality_test_logger = logging.getLogger("cutgeneratingfunctionology.igp.simple_extremality_test")
 simple_extremality_test_logger.setLevel(logging.INFO)
 
 def generate_perturbations_simple(fn, show_plots=False, f=None, oversampling=3, order=None, full_certificates=True):

@@ -46,8 +46,8 @@ logging.getLogger().addHandler(sage_hdlr) # Add the sage steam handler to the ro
 
 # Note to future person looking at this code:
 # Default logging levels are set by module loggers.
-# .sage files use __name__ to be the python module they are called by.
-# We name all module loggers by their file name withing igp.
+# .sage files use __name__ to be the python module they are called by not the full module path as would be in pure python.
+# We name all module loggers by cutgeneratingfunctionology.igp.+file name in anticpation for a pure python file change.
 
 def logger(func):
     def inner(*args, **kwargs): #1

@@ -1,7 +1,7 @@
 from six.moves import range
 import logging
 
-extreme_functions_mlr_cpl3_logger =  logging.getLogger("extreme_functions_mlr_cpl3.sage")
+extreme_functions_mlr_cpl3_logger =  logging.getLogger("cutgeneratingfunctionology.igp.extreme_functions_mlr_cpl3")
 extreme_functions_mlr_cpl3_logger.setLevel(logging.INFO)
 
 def cpl3_function(r0, z1, o1, o2):

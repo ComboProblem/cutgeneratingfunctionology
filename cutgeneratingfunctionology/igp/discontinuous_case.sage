@@ -2,7 +2,7 @@ from six.moves import range
 from six.moves import zip
 import logging
 
-discontinuous_case_logger =  logging.getLogger("discontinuous_case.sage")
+discontinuous_case_logger =  logging.getLogger("cutgeneratingfunctionology.igp.discontinuous_case")
 discontinuous_case_logger.setLevel(logging.INFO)
 
 ########## Code for Discontinuous Case ###########

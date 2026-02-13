@@ -5,7 +5,7 @@ from .parametric_family import ParametricFamily
 
 import logging
 
-extreme_functions_in_literature_logger=  logging.getLogger("extreme_functions_in_literature_logger.sage")
+extreme_functions_in_literature_logger=  logging.getLogger("cutgeneratingfunctionology.igp.extreme_functions_in_literature_logger")
 extreme_functions_in_literature_logger.setLevel(logging.INFO)
 
 class ParametricFamily_gmic(ParametricFamily):

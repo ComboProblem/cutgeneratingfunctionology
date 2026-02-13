@@ -6,7 +6,7 @@ import numpy as np
 import gc
 import logging
 
-faster_subaddivity_test_logger = logging.getLogger("faster_subadditivity_test.sage")
+faster_subaddivity_test_logger = logging.getLogger("cutgeneratingfunctionology.igp.faster_subadditivity_test")
 faster_subaddivity_test_logger.setLevel(logging.INFO)
 
 class SubadditivityTestTreeNode(object):

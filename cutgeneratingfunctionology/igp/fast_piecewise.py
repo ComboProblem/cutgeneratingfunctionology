@@ -15,7 +15,7 @@ from . import FastLinearFunction
 from cutgeneratingfunctionology.spam.parametric_real_field_element import is_parametric_element
 import logging
 
-fast_piecewise_logger = logging.getLogger("past_piecewise.py")
+fast_piecewise_logger = logging.getLogger("cutgeneratingfunctionology.igp.past_piecewises")
 fast_piecewise_logger.setLevel(logging.INFO)
 
 class PiecewiseLinearFunction_1d (ModuleElement):
