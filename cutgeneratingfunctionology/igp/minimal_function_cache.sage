@@ -5,7 +5,9 @@ import csv
 import os
 from cutgeneratingfunctionology.spam.basic_semialgebraic import EmptyBSA
 import logging
-logger = logging.getLogger(__name__)
+
+minimal_function_cache_logger = logging.getLogger("cutgeneratingfunctionology.igp.minimal_function_cache")
+minimal_function_cache_logger.setLevel(logging.INFO)
 
 ### Note to future reader, from yours truely. ###
 ### bkpt is assumed to be a breakpoint sequence of length n>= 2. 
@@ -14,10 +16,9 @@ logger = logging.getLogger(__name__)
 ### This is never strictly enforced in this file and it is assumed that
 ### the user is always provided a breakpoint sequence. 
 
-# global defaults for logging from portions of CGF 
+# global defaults for logging from portions of igp; change to log different parts of igp.
 log_paramateric_real_field = False
 log_pw_functions = False
-
 
 class RepElemGenFailure(Exception):
     pass
@@ -34,8 +35,9 @@ def nnc_poly_from_bkpt_sequence(bkpt, backend=None):
     OUTPUT: class::``BasicSemialgebraicSet_veronese``
     
     EXAMPLES::
-    >>> from cutgeneratingfunctionology.igp import * 
-    >>> nnc_poly_from_bkpt_sequence([0, 4/5])
+    sage: from cutgeneratingfunctionology.igp import * 
+    sage: logging.disable(logging.INFO) # suppress logging for tests
+    sage: nnc_poly_from_bkpt_sequence([0, 4/5])
     BasicSemialgebraicSet_veronese(BasicSemialgebraicSet_polyhedral_ppl_NNC_Polyhedron(Constraint_System {x0==0, -x1+1>0, 2*x1-1>0}, names=[x0, x1]), polynomial_map=[lambda0, lambda1])
     """
     n = len(bkpt)
@@ -44,6 +46,9 @@ def nnc_poly_from_bkpt_sequence(bkpt, backend=None):
     bkpt_vals = bkpt
     vals = bkpt_vals[0:n]
     bkpt_extd = list(bkpt)+[1]
+    if not log_paramateric_real_field:
+        parametric_logging_level = logging.getLogger("cutgeneratingfunctionology.igp.parametric").getEffectiveLevel()
+        logging.getLogger("cutgeneratingfunctionology.igp.parametric").setLevel(logging.ERROR)
     for i in range(0,n):
         coord_names.append('lambda'+str(i))
     K = ParametricRealField(names=coord_names, values = vals, mutable_values=True, big_cells=True)
@@ -71,9 +76,10 @@ def nnc_poly_from_bkpt_sequence(bkpt, backend=None):
                         K.gens()[i] + K.gens()[j] - w < K.gens()[k+1]
                     else:
                         K.gens()[k] == K.gens()[i] + K.gens()[j] - w
-                        K.gens()[i] + K.gens()[j] - w < 1                    
+                        K.gens()[i] + K.gens()[j] - w < 1
+    if not log_paramateric_real_field:
+        logging.getLogger("cutgeneratingfunctionology.igp.parametric").setLevel(parametric_logging_level)
     return K._bsa
-
 
 
 def add_breakpoints_and_find_equiv_classes(bkpt_poly):
@@ -86,7 +92,10 @@ def add_breakpoints_and_find_equiv_classes(bkpt_poly):
     OUTPUT: unique list of breakpoint sequnes of lenght k (as tuples). 
     
     EXAMPLES::
-    >>> add_breakpoints_and_find_equiv_classes(nnc_poly_from_bkpt_sequence([0,4/5]).upstairs())
+
+    sage: from cutgeneratingfunctionology.igp import * 
+    sage: logging.disable(logging.INFO) # suppress logging for tests
+    sage: add_breakpoints_and_find_equiv_classes(nnc_poly_from_bkpt_sequence([0,4/5]).upstairs())
     [(0, 9/14, 83/112), (0, 13/20, 33/40), (0, 9/14, 101/112), (0, 7/10, 17/20)]
     
     """
@@ -155,19 +164,23 @@ def make_rep_bkpts_with_len_n(n, k=1, bkpts=None, backend=None):
     OUTPUT: A list of representative elements of every isomorphism class of breakpoints complexes for breakpoint sequences of length n extrapolated from bkpts.
     
     EXAMPLES::
-    >>> make_rep_bkpts_with_len_n(2)
+    
+    sage: from cutgeneratingfunctionology.igp import * 
+    sage: logging.disable(logging.INFO) # suppress logging for tests
+    sage: make_rep_bkpts_with_len_n(2)
     [(0, 1/2), (0, 13/18), (0, 5/18)]
     
     The number of representative elements grows quickly::
     
-    >>> bkpts_rep_with_len_3 = make_rep_bkpts_with_len_n(3)    
-    >>> len(bkpts_rep_with_len_3)
+    sage: bkpts_rep_with_len_3 = make_rep_bkpts_with_len_n(3)    
+    sage: len(bkpts_rep_with_len_3)
     34
     
     Previous computations can be reused:: 
     
-    >>> bkpts_rep_with_len_4 = make_bkpts_with_len_n(4, 3, bkpts_rep_with_len_3)
-    >>> len(bkpts_rep_with_len_4)
+    sage: bkpts_rep_with_len_4 = make_rep_bkpts_with_len_n(4, 3, bkpts_rep_with_len_3)
+    sage: len(bkpts_rep_with_len_4)
+    329
     """
     # Look into using a directed tree as an underlying data structure for generating elements.
     new_bkpts = []
@@ -183,10 +196,10 @@ def make_rep_bkpts_with_len_n(n, k=1, bkpts=None, backend=None):
     k += 1
 
     if k == n:
-        logger.info(f"Breakpoints of length {n} have been generated. ")
+        minimal_function_cache_logger.info(f"Breakpoints of length {n} have been generated. ")
         return new_bkpts
     else:
-        logger.info(f"Breakpoitns of lenght {k} have been generated. Now generating breakpoints of length{k+1}")
+        minimal_function_cache_logger.info(f"Breakpoitns of lenght {k} have been generated. Now generating breakpoints of length{k+1}")
         return make_rep_bkpts_with_len_n(n, k, new_bkpts)
 
 
@@ -222,12 +235,21 @@ def value_nnc_polyhedron_value_cords(bkpt, f_index, backend =None):
     - class::``BasicSemialgebraicSet_veronese``
     
     EXAMPLES::
-    >>> value_nnc_polyhedron_value_cords([0,4/5], 1) # gmic with f=4/5
+    
+    sage: from cutgeneratingfunctionology.igp import * 
+    sage: logging.disable(logging.INFO) # suppress logging for tests
+    sage: value_nnc_polyhedron_value_cords([0,4/5], 1) # gmic with f=4/5
     BasicSemialgebraicSet_veronese(BasicSemialgebraicSet_polyhedral_ppl_NNC_Polyhedron(Constraint_System {x1-1==0, x0==0}, names=[x0, x1]), polynomial_map=[gamma0, gamma1])
     """
     # this saves a slight amount of overhead when detemrining points for the value polyhedron since the assumed
     # minimality test does not have to entierly go though parametric real field.
     n = len(bkpt)
+    if not log_paramateric_real_field:
+        parametric_logging_level = logging.getLogger("cutgeneratingfunctionology.igp.parametric").getEffectiveLevel()
+        logging.getLogger("cutgeneratingfunctionology.igp.parametric").setLevel(logging.ERROR)
+    if not log_pw_functions:
+        pw_logging_level = logging.getLogger("cutgeneratingfunctionology.igp.functions").getEffectiveLevel()
+        logging.getLogger("cutgeneratingfunctionology.igp.functions").setLevel(logging.ERROR)
     assert(n >= 2)
     assert(f_index >= 1)
     assert(f_index <= n - 1)
@@ -250,6 +272,10 @@ def value_nnc_polyhedron_value_cords(bkpt, f_index, backend =None):
         vert
     for vert in generate_assumed_symmetric_vertices_continuous(h, bkpt[f_index], bkpt + [1]):
         vert
+    if not log_paramateric_real_field:
+        logging.getLogger("cutgeneratingfunctionology.igp.parametric").setLevel(parametric_logging_level)
+    if not log_pw_functions:
+        logging.getLogger("cutgeneratingfunctionology.igp.functions").setLevel(pw_logging_level)
     return K._bsa
 
 def value_nnc_polyhedron(bkpt, f_index):
@@ -265,10 +291,19 @@ def value_nnc_polyhedron(bkpt, f_index):
     - class::``BasicSemialgebraicSet_veronese`` 
     
     EXAMPLES::
-    >>> value_nnc_polyhedron([0,4/5], 1) # gmic with f=4/5
+
+    sage: from cutgeneratingfunctionology.igp import * 
+    sage: logging.disable(logging.INFO) # suppress logging for tests
+    sage: value_nnc_polyhedron([0,4/5], 1) # gmic with f=4/5
     BasicSemialgebraicSet_veronese(BasicSemialgebraicSet_polyhedral_ppl_NNC_Polyhedron(Constraint_System {x3-1==0, x2==0, 5*x1-4==0, x0==0}, names=[x0, x1, x2, x3]), polynomial_map=[lambda0, lambda1, gamma0, gamma1])
     """
     n = len(bkpt)
+    if not log_paramateric_real_field:
+        parametric_logging_level = logging.getLogger("cutgeneratingfunctionology.igp.parametric").getEffectiveLevel()
+        logging.getLogger("cutgeneratingfunctionology.igp.parametric").setLevel(logging.ERROR)
+    if not log_pw_functions:
+        pw_logging_level = logging.getLogger("cutgeneratingfunctionology.igp.functions").getEffectiveLevel()
+        logging.getLogger("cutgeneratingfunctionology.igp.functions").setLevel(logging.ERROR)
     assert(n >= 2)
     assert(f_index >= 1)
     assert(f_index <= n)
@@ -296,6 +331,10 @@ def value_nnc_polyhedron(bkpt, f_index):
         vert
     for vert in generate_assumed_symmetric_vertices_continuous(h, K.gens()[f_index], [0] + K.gens()[0:n] + [1]):
         vert
+    if not log_paramateric_real_field:
+        logging.getLogger("cutgeneratingfunctionology.igp.parametric").setLevel(parametric_logging_level)
+    if not log_pw_functions:
+        logging.getLogger("cutgeneratingfunctionology.igp.functions").setLevel(pw_logging_level)
     return K._bsa
 
 
@@ -316,6 +355,12 @@ def bsa_of_rep_element(bkpt, vals):
     
     """
     n = len(bkpt)
+    if not log_paramateric_real_field:
+        parametric_logging_level = logging.getLogger("cutgeneratingfunctionology.igp.parametric").getEffectiveLevel()
+        logging.getLogger("cutgeneratingfunctionology.igp.parametric").setLevel(logging.ERROR)
+    if not log_pw_functions:
+        pw_logging_level = logging.getLogger("cutgeneratingfunctionology.igp.functions").getEffectiveLevel()
+        logging.getLogger("cutgeneratingfunctionology.igp.functions").setLevel(logging.ERROR)
     assert(n>=2)
     coord_names = []
     for i in range(n):
@@ -325,6 +370,10 @@ def bsa_of_rep_element(bkpt, vals):
     K = ParametricRealField(names=coord_names, values = bkpt+vals, big_cells=True)
     h = piecewise_function_from_breakpoints_and_values(K.gens()[0:n] + [1], K.gens()[n:2*n] + [0], merge=False)
     minimality_test(h)
+    if not log_paramateric_real_field:
+        logging.getLogger("cutgeneratingfunctionology.igp.parametric").setLevel(parametric_logging_level)
+    if not log_pw_functions:
+        logging.getLogger("cutgeneratingfunctionology.igp.functions").setLevel(pw_logging_level)
     return K.make_proof_cell().bsa
 
 
@@ -341,13 +390,18 @@ def find_minimal_function_reps_from_bkpts(bkpts, prove_minimality=True, backend=
     - List of tuples of lists 
     
     EXAMPLES::
-    
-    >>> bkpts = make_rep_bkpts_with_len_n(2)
-    >>> find_minimal_function_reps_from_bkpts(bkpts)
-    [([0, 1/2], [0, 1]), ((0, 13/18), [0, 1]), ((0, 5/18), [0, 1])][((0, 1/2), [0, 1]), ((0, 13/18), [0, 1]), ((0, 5/18), [0, 1])]
+
+    sage: from cutgeneratingfunctionology.igp import * 
+    sage: logging.disable(logging.INFO) # suppress logging for tests    
+    sage: bkpts = make_rep_bkpts_with_len_n(2)
+    sage: find_minimal_function_reps_from_bkpts(bkpts)
+    [([0, 1/2], [0, 1]), ([0, 13/18], [0, 1]), ([0, 5/18], [0, 1])]
     
     """
     rep_elems = []
+    if not log_pw_functions:
+        pw_logging_level = logging.getLogger("cutgeneratingfunctionology.igp.functions").getEffectiveLevel()
+        logging.getLogger("cutgeneratingfunctionology.igp.functions").setLevel(logging.ERROR)
     for bkpt in bkpts:
         n = len(bkpt)
         for f_index in range(1, n):
@@ -365,6 +419,8 @@ def find_minimal_function_reps_from_bkpts(bkpts, prove_minimality=True, backend=
                 if not minimality_test(h): # The following error should never be raised when this function is used as intended.
                     raise ValueError(f"({bkpt}, {test_val}) paramaterized by breakpoints and values is not a minimal function but assuming a breakpoint sequence is input, this should be minimal.")
             rep_elems.append((list(bkpt), test_val))
+    if not log_pw_functions:
+        logging.getLogger("cutgeneratingfunctionology.igp.functions").setLevel(pw_logging_level)
     return rep_elems
 
 
@@ -376,7 +432,25 @@ class BreakpointComplexClassContainer:
     The container assumes that loaded data is correct and performs no checking
     that the loaded data represnts the full space. 
     
+    This class contains ways to read/write data for use with minimal function generation.
+    
     EXAMPLES::
+
+    sage: from cutgeneratingfunctionology.igp import * 
+    sage: logging.disable(logging.INFO) # suppress logging for tests
+    sage: bkpt_of_len_2 = BreakpointComplexClassContainer(2)
+    sage: bkpt_of_len_2.num_rep_elems()
+    3
+    sage: [elem for elem in bkpt_of_len_2.get_rep_elems()]
+    [(0, 1/2), (0, 13/18), (0, 5/18)]
+    sage: make_rep_bkpts_with_len_n(2)
+    [(0, 1/2), (0, 13/18), (0, 5/18)]
+    
+    A cell descrption of semialgebraic sets can be accessed::
+    
+    sage: all([isinstance(cell, BasicSemialgebraicSet_base) for cell in bkpt_of_len_2.get_nnc_poly_from_bkpt()])
+    True
+    
     
     """
     def __init__(self, n, **kwrds):
@@ -389,7 +463,7 @@ class BreakpointComplexClassContainer:
                 self._backend = None
         if "load_rep_elem_data" in kwrds.keys():
             if kwrds[load_rep_elem_data] is None:
-                logger.info("Generating representative elements. This might take a while.")
+                minimal_function_cache_logger.info("Generating representative elements. This might take a while.")
                 self._data = make_rep_bkpts_with_len_n(self._n)
             else:
                 file_names = kwrds["load_bkpt_data"].split(",")
@@ -404,7 +478,7 @@ class BreakpointComplexClassContainer:
                         if k < n:
                             self._data = make_rep_bkpts_with_len_n(n, k, self._data)
         else:
-            logger.info("Generating representative elements. This might take a while.")
+            minimal_function_cache_logger.info("Generating representative elements. This might take a while.")
             self._data = make_rep_bkpts_with_len_n(self._n)
 
     def __repr__(self):
@@ -421,9 +495,10 @@ class BreakpointComplexClassContainer:
     def num_rep_elems(self):
         return len(self._data)
 
-    def add_one_bkpt_to_all(self):
-        logger.info("Generating representative elements. This might take a while.")
-        self._data = make_bkpts_with_len_n(self._n+1, self._n, self._data)
+    # def add_one_bkpt_to_all(self):
+        # minimal_function_cache_logger.info("Generating representative elements. This might take a while.")
+        # self._n = n+1
+        # self._data = make_bkpts_with_len_n(self._n, self._n-1, self._data)
         
     def covers_space(self):
         ### TODO: This method should prove that container is correct.
@@ -448,8 +523,6 @@ class BreakpointComplexClassContainer:
         for cell in cells_found:
             new_data.append(cell.find_point())
         self._data = new_data
-            
-        
 
     def write_data(self, output_file_name_style=None, max_rows=None):
         """
@@ -488,35 +561,46 @@ class PiMinContContainer:
     most n breakpoints paramaterized by breakpoints and values using semialgebraic sets.
     
     The container assumes that loaded data is correct and performs no checking.
+    
+    INPUTS:
+    - n, an integer
+    keywords:
+    - backend, None or str(pplite)
+    - load_bkpt_data, .csv file(s) of list of tuples of breakpoitns
+    - load_rep_elem_data, .csv file(s) of list of tuples of representative elements of the space of minimal functions
 
     EXAMPLES::
 
-    >>> PiMin_4 = PiMinContContainer(4)
-    >>> all([minimality_test(pi) for pi in PiMin_4.get_rep_functions()])
+    sage: from cutgeneratingfunctionology.igp import * 
+    sage: logging.disable(logging.INFO) # suppress logging for tests
+    sage: PiMin_2 = PiMinContContainer(2)
+    sage: all([minimality_test(pi) for pi in PiMin_2.get_rep_functions()])
     True
-    >>> PiMin_4
-    Space of minimal functions with at most 4 breakpoints parameterized by breakpoints and values using semialgebraic sets.
+    sage: PiMin_2
+    Space of minimal functions with at most 2 breakpoints parameterized by breakpoints and values using semialgebraic sets.
     
     A cell descrption of semialgebraic sets can be accessed::
     
-    >>> all([isinstance(cell, BasicSemialgebraicSet_base) for cell in PiMin_4.get_semialgebraic_sets()])
+    sage: all([isinstance(cell, BasicSemialgebraicSet_base) for cell in PiMin_2.get_semialgebraic_sets()])
     True
     
     Data is stored as repersenative elements. The number of repersentative elements grows quickly. ::
     
-    >>> len([rep_elem for rep_elem in PiMin_4.get_rep_elems()])
+    sage: PiMin_4 = PiMinContContainer(4)  # not tested
+    sage: len([rep_elem for rep_elem in PiMin_4.get_rep_elems()]) # not tested
     987
+    sage: len([rep_elem for rep_elem in PiMin_2.get_rep_elems()])
+    3
     
     The container provides methods of writing data.::
     
-    >>> PiMin_4.write_data()
-    
+    sage: PiMin_2.write_data() #
     
     Written data can be reused ::
     
-    >>> PiMin_4_loaded_data = PiMinContContainer(4,  load_rep_elem_data="Pi_Min_4.csv")
-    >>> len([rep_elem for rep_elem in PiMin_4_loaded_data.get_rep_elems()])
-    987
+    sage: PiMin_2_loaded_data = PiMinContContainer(2,  load_rep_elem_data="Pi_Min_2.csv")
+    sage: len([rep_elem for rep_elem in PiMin_2_loaded_data.get_rep_elems()])
+    3
     """
     def __init__(self, n, **kwrds):
         self._n = n
@@ -544,8 +628,9 @@ class PiMinContContainer:
                     for row in file_reader:
                         self._data.append([eval(preparse(data)) for data in row])
         else:
-            logger.info("Generating representative elements. This might take a while.")
+            minimal_function_cache_logger.info("Generating representative elements. This might take a while.")
             bkpts = make_rep_bkpts_with_len_n(self._n)
+            minimal_function_cache_logger.info("Finished generating elements.")
             self._data = find_minimal_function_reps_from_bkpts(bkpts)
 
     def __repr__(self):
