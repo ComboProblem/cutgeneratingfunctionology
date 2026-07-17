@@ -53,7 +53,7 @@ class BasicSemialgebraicSet_polyhedral_pplite_NNC_Polyhedron(BasicSemialgebraicS
     @staticmethod
     def _pplite_constraint(lhs, cst, op):
         r"""
-        Make a PPL ``Constraint`` ``lhs`` * x + cst ``op`` 0,
+        Make a PPLite ``Constraint`` ``lhs`` * x + cst ``op`` 0,
         where ``lhs`` is be a vector of length ambient_dim.
         """
         lcd = lcm(lcm(x.denominator() for x in lhs), cst.denominator())
@@ -198,9 +198,8 @@ class BasicSemialgebraicSet_polyhedral_pplite_NNC_Polyhedron(BasicSemialgebraicS
             return vector(QQ, (QQ(x)/den for x in [g.coefficient(v) for v in range(ambient_dim)])) # based on email this should in theory works
 
         def to_vector(g, ambient_dim):
-            den = g.divisor()
             # g.set_space_dimension(ambient_dim)
-            return vector(QQ, (QQ(x)/den for x in [g.coefficient(v) for v in range(ambient_dim)]))
+            return vector(QQ, (QQ(x) for x in [g.coefficient(v) for v in range(ambient_dim)]))
         points = [to_point(g, self._polyhedron.space_dimension()) for g in self._polyhedron.generators()
                     if g.is_point() or g.is_closure_point()]
         rays = [to_vector(g, self._polyhedron.space_dimension()) for g in self._polyhedron.generators()

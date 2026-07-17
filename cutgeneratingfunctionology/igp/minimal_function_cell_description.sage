@@ -306,7 +306,7 @@ def value_nnc_polyhedron(bkpt, f_index, backend=None, log_paramateric_real_field
         logging.getLogger("cutgeneratingfunctionology.igp.functions").setLevel(logging.ERROR)
     assert(n >= 2)
     assert(f_index >= 1)
-    assert(f_index <= n)
+    assert(f_index <= n-1)
     coord_names = []
     bkpt_vals = list(bkpt)
     vals = bkpt_vals + [None]*(n)
