@@ -1022,7 +1022,7 @@ class BasicSemialgebraicSet_polyhedral_ppl_NNC_Polyhedron(BasicSemialgebraicSet_
         for c in self._polyhedron.minimized_constraints():
             if c.is_equality():
                 coeff = c.coefficients()
-                # observe: coeffients in a constraint of NNC_Polyhedron could have gcd != 1. # take care of this.
+                # observe: coeffients in a constraint of NNC_Polyhedron could have gcd != 1. # taake care of this.
                 gcd_c = gcd(gcd(coeff), c.inhomogeneous_term())
                 t = sum(QQ(x)/gcd_c*y for x, y in zip(coeff, self.poly_ring().gens())) + QQ(c.inhomogeneous_term())/gcd_c
                 yield t

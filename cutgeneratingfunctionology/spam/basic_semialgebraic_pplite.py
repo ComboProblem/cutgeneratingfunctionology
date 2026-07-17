@@ -119,7 +119,6 @@ class BasicSemialgebraicSet_polyhedral_pplite_NNC_Polyhedron(BasicSemialgebraicS
 
         Together, ``eq_poly``, ``lt_poly``, and ``le_poly`` describe ``self``.
         """
-        # add tests
         for c in self._polyhedron.constraints():
             if c.is_equality():
                 coeff = [c.coefficient(pplite_Var(i)) for i in range(c.space_dimension())]
