@@ -1,12 +1,13 @@
 from cutgeneratingfunctionology.igp import *
 from cutgeneratingfunctionology.spam.basic_semialgebraic import EmptyBSA
 from cutgeneratingfunctionology.spam.basic_semialgebraic_pplite import BasicSemialgebraicSet_polyhedral_pplite_NNC_Polyhedron
+from sage.geometry.polyhedral_complex import PolyhedralComplex
 import csv
 import logging
 import os
 
 minimal_funciton_cell_description_logger = logging.getLogger("cutgeneratingfunctionology.igp.minimal_funciton_cell_description")
-minimal_funciton_cell_description_logger.setLevel(logging.INFO)
+minimal_funciton_cell_description_logger.setLevel(logging.DEBUG)
 
 ### Note to future reader: ###
 ### bkpt is assumed to be a breakpoint sequence of length n>= 2.
@@ -19,7 +20,7 @@ class RepElemGenFailure(Exception):
     pass
 
 
-def nnc_poly_from_bkpt_sequence(bkpt, backend=None, log_paramateric_real_field = False,log_pw_functions = False):
+def combinatorial_neighborhood_of_bkpt_seq(bkpt, backend=None, log_paramateric_real_field = False,log_pw_functions = False):
     r"""
     Defines an NNC polyhedron P such that for all b in P the delta complex of b is isomoprhic to the delta complex of bkpt.
 
@@ -32,7 +33,7 @@ def nnc_poly_from_bkpt_sequence(bkpt, backend=None, log_paramateric_real_field =
     EXAMPLES::
     sage: from cutgeneratingfunctionology.igp import *
     sage: logging.disable(logging.INFO) # suppress logging for tests
-    sage: nnc_poly_from_bkpt_sequence([0, 4/5])
+    sage: combinatorial_neighborhood_of_bkpt_seq([0, 4/5])
     BasicSemialgebraicSet_veronese(BasicSemialgebraicSet_polyhedral_ppl_NNC_Polyhedron(Constraint_System {x0==0, -x1+1>0, 2*x1-1>0}, names=[x0, x1]), polynomial_map=[lambda0, lambda1])
     """
     n = len(bkpt)
@@ -88,7 +89,7 @@ def add_breakpoints_and_find_equiv_classes(bkpt_poly):
 
     sage: from cutgeneratingfunctionology.igp import *
     sage: logging.disable(logging.INFO) # suppress logging for tests
-    sage: add_breakpoints_and_find_equiv_classes(nnc_poly_from_bkpt_sequence([0,4/5]).upstairs())
+    sage: add_breakpoints_and_find_equiv_classes(combinatorial_neighborhood_of_bkpt_seq([0,4/5]).upstairs())
     [(0, 9/14, 83/112), (0, 13/20, 33/40), (0, 9/14, 101/112), (0, 7/10, 17/20)]
     """
     # BSAs are highly mutable, work only with copies.
@@ -190,7 +191,7 @@ def make_rep_bkpts_with_len_n(n, k=1, bkpts=None, backend=None):
     if k == 1 and bkpts is None:
         bkpts = [[0]]
     for bkpt in bkpts:
-        new_bkpts += add_breakpoints_and_find_equiv_classes(nnc_poly_from_bkpt_sequence(bkpt, backend=backend).upstairs())
+        new_bkpts += add_breakpoints_and_find_equiv_classes(combinatorial_neighborhood_of_bkpt_seq(bkpt, backend=backend).upstairs())
     new_bkpts = unique_list(new_bkpts)
     k += 1
     if k == n:
@@ -540,7 +541,7 @@ class BreakpointComplexClassContainer:
         Iterator yielding a cell such that all elements in the cell correspond to 2d polyhedral complexes of the same combinatorial type.
         """
         for bkpt in self._data:
-            yield nnc_poly_from_bkpt_sequence(bkpt, backend=self._backend)
+            yield combinatorial_neighborhood_of_bkpt_seq(bkpt, backend=self._backend)
 
     def num_rep_elems(self):
         """
@@ -575,7 +576,7 @@ class BreakpointComplexClassContainer:
                     bkpt_contained_in_cell = True
                     break
             if not contained_in_cell:
-                cells_found.append(nnc_poly_from_bkpt_sequence(bkpt, backend=self._backend))
+                cells_found.append(combinatorial_neighborhood_of_bkpt_seq(bkpt, backend=self._backend))
         new_data = []
         for cell in cells_found:
             new_data.append(cell.find_point())
@@ -844,6 +845,155 @@ def plot_2_d_polyhedral_complex(bkpt, highlight_index=-1, highlight_color='blue'
             p += parametric_plot((bkpt_ext[i],y), (y,0,1), color='grey')
     p += line([(1,0), (1,1)], color='grey')
     return p
+
+
+def Face_of_breakpoint_complex(I, J, K, backend=None):
+    """
+    A Face of the breakpoint complex as a polyhedron.
+    """
+    F = MixedIntegerLinearProgram(solver='PPL')   
+    x, y = F['x'], F['y']
+    F.add_constraint(I[0] <= x)
+    F.add_constraint(x <= I[1])
+    F.add_constraint(J[0] <= y)
+    F.add_constraint(y <= J[1])
+    F.add_constraint(K[0] <= x+y)
+    F.add_constraint(x+y <= K[1])
+    return Polyhedron(F, base_ring=QQ)
+
+def breakpoint_complex(bkpt, lambda_star=0, x_split=False, y_split=False):
+    """
+    Generates a breakpoint complex as a ``sage.geometery.PolyhedralComplex``.
+
+    Options consider intermedate breakpoint complex families where the comlex has been split along x=lambda_star or y=lambda_star.
+
+    Note:
+    0 < lambda_star < 1
+
+    EXAMPLES::
+    sage: from cutgeneratingfunctiology.igp import *
+    sage: bc = breakpoint_complex([0, 4/5])
+    sage: bc_w_x_split = breakpoint_complex([0, 4/5], 1/3, x_split=True)
+    sage: bc_w_y_split = breakpoint_complex([0, 4/5], 1/3, y_split=True)
+    sage: bc_w_xy_split = breakpoint_complex([0, 4/5], 1/3, x_split=True, y_split=True)
+    """
+    n = len(bkpt)
+    bkpt_ext = bkpt+[1]
+    assert (0 <= lambda_star < 1) # lambda_star == 0 is the base breakpoint complex, that is we think of bkpt has multiplicity 2 at 0 in this case. 
+    # multiplcities will increase teh run time but will not (at least from a mathematical perpective)
+    bkpt_w_lambda_star = bkpt+[lambda_star]
+    bkpt_w_lambda_star.sort()
+    bkpt_w_lambda_star_ext = bkpt_w_lambda_star+[1]
+    if x_split:
+        I_b = [[bkpt,bkpt] for bkpt in bkpt_w_lambda_star_ext] + [[bkpt_w_lambda_star_ext[i],bkpt_w_lambda_star_ext[i+1]] for i in range(n+1)] 
+    else:
+        I_b = [[bkpt,bkpt] for bkpt in bkpt_ext] + [[bkpt_ext[i],bkpt_ext[i+1]] for i in range(n)]
+    if y_split:
+        J_b = [[bkpt,bkpt] for bkpt in bkpt_w_lambda_star_ext] + [[bkpt_w_lambda_star_ext[i],bkpt_w_lambda_star_ext[i+1]] for i in range(n+1)]
+    else:
+        J_b = [[bkpt,bkpt] for bkpt in bkpt_ext] + [[bkpt_ext[i],bkpt_ext[i+1]] for i in range(n)]
+    K_b = [[bkpt,bkpt] for bkpt in bkpt_ext] + [[bkpt_ext[i],bkpt_ext[i+1]] for i in range(n)] +[[bkpt+1,bkpt+1] for bkpt in bkpt_ext] + [[bkpt_ext[i]+1,bkpt_ext[i+1]+1] for i in range(n)]
+    faces = [Face_of_breakpoint_complex(i, j, k) for i in I_b for j in  J_b for k in K_b]
+    return PolyhedralComplex(faces)
+
+
+def split_complex(bkpt, lambda_star=0, x_split=False, xy_split=False, x_plus_y_split=False):
+    """
+    Generates pre_split complex, split operation decomposion, and the pre_split complex complement its complement as a ``sage.geometery.PolyhedralComplex``. 
+
+    """
+    if x_split:
+        base_complex = breakpoint_complex(bkpt, lambda_star)
+    elif xy_split:
+        base_complex = breakpoint_complex(bkpt, lambda_star, x_split=True)
+    elif x_plus_y_split:
+        base_complex = breakpoint_complex(bkpt, lambda_star, x_split=True, y_split=True)
+    else:
+        raise ValueError("Please set one of x_split, xy_split, x_plus_y_split to True.")
+    pre_split = PolyhedralComplex(ambient_dim=2)
+    pre_split_complement = PolyhedralComplex(ambient_dim=2)
+    split_ge = PolyhedralComplex(ambient_dim=2)
+    split_le = PolyhedralComplex(ambient_dim=2)
+    split_eq = PolyhedralComplex(ambient_dim=2)
+    for cell in base_complex.maximal_cell_iterator():
+        cell_ieqs = cell.inequalities_list()
+        if x_split:
+            eq_ieqs = cell_ieqs+[[-1*lambda_star, 1,0], [lambda_star, -1,0]]
+            cell_with_x_eq = Polyhedron(ieqs=eq_ieqs)
+            if cell_with_x_eq.is_empty():
+                pre_split_complement.add_cell(Polyhedron(ieqs=cell_ieqs))
+            else:
+                geq_ieqs = cell_ieqs+[[-1*lambda_star, 1,0]]
+                cell_with_x_ge = Polyhedron(ieqs=geq_ieqs)
+                leq_ieqs = cell_ieqs+[[lambda_star, -1,0]]
+                cell_with_x_le = Polyhedron(ieqs=leq_ieqs)
+                pre_split.add_cell(cell)
+                split_ge.add_cell(cell_with_x_ge)
+                split_le.add_cell(cell_with_x_le)
+                split_eq.add_cell(cell_with_x_eq)
+        elif xy_split:
+            eq_ieqs = cell_ieqs+[-1*lambda_star, 0,1], [lambda_star, 0,-1]
+            cell_with_y_eq = Polyhedron(ieqs=eq_ieqs)
+            if cell_with_y_eq.is_empty():
+                pre_split_complement.add_cell(Polyhedron(ieqs=cell_ieqs))
+            else:
+                geq_ieqs = cell_ieqs+[[-1*lambda_star, 0,1]]
+                cell_with_y_ge = Polyhedron(ieqs=geq_ieqs)
+                leq_ieqs = cell_ieqs+[lambda_star, 0,-1]
+                cell_with_y_le = Polyhedron(ieqs=leq_ieqs)
+                pre_split.add_cell(cell)
+                split_ge.add_cell(cell_with_y_ge)
+                split_le.add_cell(cell_with_y_le)
+                split_eq.add_cell(cell_with_y_eq)
+        elif x_plus_y_split:
+            eq_ieqs = cell_ieqs+[[-1*lambda_star, 1,1],[lambda_star, -1,-1]]
+            cell_with_y_eq = Polyhedron(ieqs=eq_ieqs)
+            if cell_with_x_plus_y_eq.is_empty():
+                pre_split_complement.add_cell(Polyhedron(ieqs=cell_ieqs))
+            else:
+                geq_ieqs = cell_ieqs+[[-1*lambda_star, 1,1]]
+                cell_with_x_plus_y_ge = Polyhedron(ieqs=geq_ieqs)
+                leq_ieqs = cell_ieqs+[[lambda_star, -1,-1]]
+                cell_with_x_plus_y_le = Polyhedron(ieqs=leq_ieqs)
+                pre_split.add_cell(cell)
+                split_ge.add_cell(cell_with_x_plus_y_ge)
+                split_le.add_cell(cell_with_x_plus_y_le)
+                split_eq.add_cell(cell_with_x_plus_y_eq)
+    return pre_split, pre_split_complement, split_ge, split_le, split_eq
+    
+
+def build_poset_isomorphsim_induction(bkpt, lambda_star, bkpt_bar, lambda_bar):
+    assert vector(bkpt_bar) in combinatorial_neighborhood_of_bkpt_seq(bkpt)
+    minimal_funciton_cell_description_logger.info(f"Assumption: b={bkpt} is contained in the combinatorial neighborood of bar b ={bkpt_bar}.")
+    bkpt_x_split = split_complex(bkpt, lambda_star, x_split=True)
+    bkpt_bar_x_split = split_complex(bkpt_bar, lambda_bar, x_split=True) 
+    for split, split_bar in zip(bkpt_x_split, bkpt_bar_x_split)
+        is_isom, poset_morph = split.face_poset().is_isomorphic(split_bar.face_poset(), certificate=True)
+        if is_isom:
+            minimal_funciton_cell_description_logger.info(f"g: split to split bar def. as {poset_morph}.")
+        else:
+            minimal_funciton_cell_description_logger.info("b={bkpt, lambda_star} is not contained in the same combinatorial neighborhood of bar b = {bkpt_bar, lambda_bar}")
+            return False
+    bkpt_xy_split = split_complex(bkpt, lambda_star, xy_split=True)
+    bkpt_bar_xy_split = split_complex(bkpt_bar, lambda_bar, xy_split=True) 
+    for split, split_bar in zip(bkpt_xy_split, bkpt_bar_xy_split)
+        is_isom, poset_morph = split.face_poset().is_isomorphic(split_bar.face_poset(), certificate=True)
+        if is_isom:
+            minimal_funciton_cell_description_logger.info(f"g: {split} to {split_bar} def. as {poset_morph}.")
+        else:
+            minimal_funciton_cell_description_logger.info("b={bkpt, lambda_star} is not contained in the same combinatorial neighborhood of bar b = {bkpt_bar, lambda_bar}")
+            return False
+    bkpt_xy_split = split_complex(bkpt, lambda_star, x_plus_y_split=True)
+    bkpt_bar_xy_split = split_complex(bkpt_bar, lambda_bar, x_plus_y_split=True) 
+    for split, split_bar in zip(bkpt_x_split, bkpt_bar_x_split)
+        is_isom, poset_morph = split.face_poset().is_isomorphic(split_bar.face_poset(), certificate=True)
+        if is_isom:
+            minimal_funciton_cell_description_logger.info(f"g: {split} to {split_bar} def. as {poset_morph}.")
+        else:
+            minimal_funciton_cell_description_logger.info("b={bkpt, lambda_star} is not contained in the same combinatorial neighborhood of bar b = {bkpt_bar, lambda_bar}")
+            return False
+    return True
+
 
 def plot_2_d_polyhedral_complex_and_descendants(bkpt, max_row_length=5, max_number_additional_diagrams=15, **kwds):
     r"""
