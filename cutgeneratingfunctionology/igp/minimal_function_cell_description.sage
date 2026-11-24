@@ -970,7 +970,7 @@ def build_poset_isomorphsim_induction(bkpt, lambda_star, bkpt_bar, lambda_bar):
     for split, split_bar in zip(bkpt_x_split, bkpt_bar_x_split)
         is_isom, poset_morph = split.face_poset().is_isomorphic(split_bar.face_poset(), certificate=True)
         if is_isom:
-            minimal_funciton_cell_description_logger.info(f"g: split to split bar def. as {poset_morph}.")
+            minimal_funciton_cell_description_logger.info(f"g (x split): split to split bar def. as {poset_morph}.")
         else:
             minimal_funciton_cell_description_logger.info("b={bkpt, lambda_star} is not contained in the same combinatorial neighborhood of bar b = {bkpt_bar, lambda_bar}")
             return False
@@ -979,16 +979,16 @@ def build_poset_isomorphsim_induction(bkpt, lambda_star, bkpt_bar, lambda_bar):
     for split, split_bar in zip(bkpt_xy_split, bkpt_bar_xy_split)
         is_isom, poset_morph = split.face_poset().is_isomorphic(split_bar.face_poset(), certificate=True)
         if is_isom:
-            minimal_funciton_cell_description_logger.info(f"g: {split} to {split_bar} def. as {poset_morph}.")
+            minimal_funciton_cell_description_logger.info(f"g (xy split): {split} to {split_bar} def. as {poset_morph}.")
         else:
             minimal_funciton_cell_description_logger.info("b={bkpt, lambda_star} is not contained in the same combinatorial neighborhood of bar b = {bkpt_bar, lambda_bar}")
             return False
-    bkpt_xy_split = split_complex(bkpt, lambda_star, x_plus_y_split=True)
-    bkpt_bar_xy_split = split_complex(bkpt_bar, lambda_bar, x_plus_y_split=True) 
-    for split, split_bar in zip(bkpt_x_split, bkpt_bar_x_split)
+    bkpt_x_plus_y_split = split_complex(bkpt, lambda_star, x_plus_y_split=True)
+    bkpt_bar_x_plus_y_split = split_complex(bkpt_bar, lambda_bar, x_plus_y_split=True) 
+    for split, split_bar in zip(bkpt_x_plus_y_split, bkpt_bar_x_plus_y_split)
         is_isom, poset_morph = split.face_poset().is_isomorphic(split_bar.face_poset(), certificate=True)
         if is_isom:
-            minimal_funciton_cell_description_logger.info(f"g: {split} to {split_bar} def. as {poset_morph}.")
+            minimal_funciton_cell_description_logger.info(f"g (x+y split): {split} to {split_bar} def. as {poset_morph}.")
         else:
             minimal_funciton_cell_description_logger.info("b={bkpt, lambda_star} is not contained in the same combinatorial neighborhood of bar b = {bkpt_bar, lambda_bar}")
             return False
