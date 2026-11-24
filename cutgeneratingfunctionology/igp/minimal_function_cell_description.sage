@@ -7,7 +7,7 @@ import logging
 import os
 
 minimal_funciton_cell_description_logger = logging.getLogger("cutgeneratingfunctionology.igp.minimal_funciton_cell_description")
-minimal_funciton_cell_description_logger.setLevel(logging.DEBUG)
+minimal_funciton_cell_description_logger.setLevel(logging.INFO)
 
 ### Note to future reader: ###
 ### bkpt is assumed to be a breakpoint sequence of length n>= 2.
@@ -932,14 +932,14 @@ def split_complex(bkpt, lambda_star=0, x_split=False, xy_split=False, x_plus_y_s
                 split_le.add_cell(cell_with_x_le)
                 split_eq.add_cell(cell_with_x_eq)
         elif xy_split:
-            eq_ieqs = cell_ieqs+[-1*lambda_star, 0,1], [lambda_star, 0,-1]
+            eq_ieqs = cell_ieqs+[[-1*lambda_star, 0,1], [lambda_star, 0,-1]]
             cell_with_y_eq = Polyhedron(ieqs=eq_ieqs)
             if cell_with_y_eq.is_empty():
                 pre_split_complement.add_cell(Polyhedron(ieqs=cell_ieqs))
             else:
                 geq_ieqs = cell_ieqs+[[-1*lambda_star, 0,1]]
                 cell_with_y_ge = Polyhedron(ieqs=geq_ieqs)
-                leq_ieqs = cell_ieqs+[lambda_star, 0,-1]
+                leq_ieqs = cell_ieqs+[[lambda_star, 0,-1]]
                 cell_with_y_le = Polyhedron(ieqs=leq_ieqs)
                 pre_split.add_cell(cell)
                 split_ge.add_cell(cell_with_y_ge)
@@ -947,7 +947,7 @@ def split_complex(bkpt, lambda_star=0, x_split=False, xy_split=False, x_plus_y_s
                 split_eq.add_cell(cell_with_y_eq)
         elif x_plus_y_split:
             eq_ieqs = cell_ieqs+[[-1*lambda_star, 1,1],[lambda_star, -1,-1]]
-            cell_with_y_eq = Polyhedron(ieqs=eq_ieqs)
+            cell_with_x_plus_y_eq = Polyhedron(ieqs=eq_ieqs)
             if cell_with_x_plus_y_eq.is_empty():
                 pre_split_complement.add_cell(Polyhedron(ieqs=cell_ieqs))
             else:
@@ -962,39 +962,47 @@ def split_complex(bkpt, lambda_star=0, x_split=False, xy_split=False, x_plus_y_s
     return pre_split, pre_split_complement, split_ge, split_le, split_eq
     
 
-def build_poset_isomorphsim_induction(bkpt, lambda_star, bkpt_bar, lambda_bar):
+def build_poset_isomorphsim_induction(bkpt, lambda_star, bkpt_bar, lambda_bar, show_plots=False):
     """
     EXAMPLES::
-    build_poset_isomorphsim_induction([0,1/4], )
+    sage: build_poset_isomorphsim_induction([0, 1/3], 4/5, [0,1/3-1/1000], 4/5+1/1000)
+    True  
+    sage: build_poset_isomorphsim_induction([0, 1/3], 4/5, [0,1/3], 2/3)
+    False
+    sage: build_poset_isomorphsim_induction([0, 1/3], 4/5, [0,1/3], 2/3+1/10000)
+    True
+    sage: build_poset_isomorphsim_induction([0, 1/3], 4/5, [0,1/3], 2/3-1/10000)
+    False
     """
     assert vector(bkpt_bar) in combinatorial_neighborhood_of_bkpt_seq(bkpt)
     minimal_funciton_cell_description_logger.info(f"Assumption: b={bkpt} is contained in the combinatorial neighborood of bar b ={bkpt_bar}.")
     bkpt_x_split = split_complex(bkpt, lambda_star, x_split=True)
-    bkpt_bar_x_split = split_complex(bkpt_bar, lambda_bar, x_split=True) 
-    for split, split_bar in zip(bkpt_x_split, bkpt_bar_x_split):
+    bkpt_bar_x_split = split_complex(bkpt_bar, lambda_bar, x_split=True)
+    map_names = ["pre-split", "pre-split-complement", "<=", ">=", "=="]
+    for split, split_bar, name in zip(bkpt_x_split, bkpt_bar_x_split, map_names):
         is_isom, poset_morph = split.face_poset().is_isomorphic(split_bar.face_poset(), certificate=True)
         if is_isom:
-            minimal_funciton_cell_description_logger.info(f"g (x split): split to split bar def. as {poset_morph}.")
+            minimal_funciton_cell_description_logger.debug(f"g (x split {name}) is isom.")
         else:
-            minimal_funciton_cell_description_logger.info("b={bkpt, lambda_star} is not contained in the same combinatorial neighborhood of bar b = {bkpt_bar, lambda_bar}")
+            minimal_funciton_cell_description_logger.debug(f"Split with {name} has failed. b={bkpt, lambda_star} is not contained in the same combinatorial neighborhood of bar b = {bkpt_bar, lambda_bar}")
             return False
     bkpt_xy_split = split_complex(bkpt, lambda_star, xy_split=True)
     bkpt_bar_xy_split = split_complex(bkpt_bar, lambda_bar, xy_split=True) 
-    for split, split_bar in zip(bkpt_xy_split, bkpt_bar_xy_split):
+    for split, split_bar, name in zip(bkpt_xy_split, bkpt_bar_xy_split, map_names):
         is_isom, poset_morph = split.face_poset().is_isomorphic(split_bar.face_poset(), certificate=True)
         if is_isom:
-            minimal_funciton_cell_description_logger.info(f"g (xy split): {split} to {split_bar} def. as {poset_morph}.")
+            minimal_funciton_cell_description_logger.debug(f"g (xy split {name}) is isom.")
         else:
-            minimal_funciton_cell_description_logger.info("b={bkpt, lambda_star} is not contained in the same combinatorial neighborhood of bar b = {bkpt_bar, lambda_bar}")
+            minimal_funciton_cell_description_logger.debug(f"Split with {name} has failed. b={bkpt, lambda_star} is not contained in the same combinatorial neighborhood of bar b = {bkpt_bar, lambda_bar}")
             return False
     bkpt_x_plus_y_split = split_complex(bkpt, lambda_star, x_plus_y_split=True)
     bkpt_bar_x_plus_y_split = split_complex(bkpt_bar, lambda_bar, x_plus_y_split=True) 
-    for split, split_bar in zip(bkpt_x_plus_y_split, bkpt_bar_x_plus_y_split):
+    for split, split_bar, name in zip(bkpt_x_plus_y_split, bkpt_bar_x_plus_y_split, map_names):
         is_isom, poset_morph = split.face_poset().is_isomorphic(split_bar.face_poset(), certificate=True)
         if is_isom:
-            minimal_funciton_cell_description_logger.info(f"g (x+y split): {split} to {split_bar} def. as {poset_morph}.")
+            minimal_funciton_cell_description_logger.debug(f"g (x+y split {name}) is isom.")
         else:
-            minimal_funciton_cell_description_logger.info("b={bkpt, lambda_star} is not contained in the same combinatorial neighborhood of bar b = {bkpt_bar, lambda_bar}")
+            minimal_funciton_cell_description_logger.debug(f"Split with {name} has failed. b={bkpt, lambda_star} is not contained in the same combinatorial neighborhood of bar b = {bkpt_bar, lambda_bar}")
             return False
     return True
 
