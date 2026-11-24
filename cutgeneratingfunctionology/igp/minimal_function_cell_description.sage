@@ -963,11 +963,15 @@ def split_complex(bkpt, lambda_star=0, x_split=False, xy_split=False, x_plus_y_s
     
 
 def build_poset_isomorphsim_induction(bkpt, lambda_star, bkpt_bar, lambda_bar):
+    """
+    EXAMPLES::
+    build_poset_isomorphsim_induction([0,1/4], )
+    """
     assert vector(bkpt_bar) in combinatorial_neighborhood_of_bkpt_seq(bkpt)
     minimal_funciton_cell_description_logger.info(f"Assumption: b={bkpt} is contained in the combinatorial neighborood of bar b ={bkpt_bar}.")
     bkpt_x_split = split_complex(bkpt, lambda_star, x_split=True)
     bkpt_bar_x_split = split_complex(bkpt_bar, lambda_bar, x_split=True) 
-    for split, split_bar in zip(bkpt_x_split, bkpt_bar_x_split)
+    for split, split_bar in zip(bkpt_x_split, bkpt_bar_x_split):
         is_isom, poset_morph = split.face_poset().is_isomorphic(split_bar.face_poset(), certificate=True)
         if is_isom:
             minimal_funciton_cell_description_logger.info(f"g (x split): split to split bar def. as {poset_morph}.")
@@ -976,7 +980,7 @@ def build_poset_isomorphsim_induction(bkpt, lambda_star, bkpt_bar, lambda_bar):
             return False
     bkpt_xy_split = split_complex(bkpt, lambda_star, xy_split=True)
     bkpt_bar_xy_split = split_complex(bkpt_bar, lambda_bar, xy_split=True) 
-    for split, split_bar in zip(bkpt_xy_split, bkpt_bar_xy_split)
+    for split, split_bar in zip(bkpt_xy_split, bkpt_bar_xy_split):
         is_isom, poset_morph = split.face_poset().is_isomorphic(split_bar.face_poset(), certificate=True)
         if is_isom:
             minimal_funciton_cell_description_logger.info(f"g (xy split): {split} to {split_bar} def. as {poset_morph}.")
@@ -985,7 +989,7 @@ def build_poset_isomorphsim_induction(bkpt, lambda_star, bkpt_bar, lambda_bar):
             return False
     bkpt_x_plus_y_split = split_complex(bkpt, lambda_star, x_plus_y_split=True)
     bkpt_bar_x_plus_y_split = split_complex(bkpt_bar, lambda_bar, x_plus_y_split=True) 
-    for split, split_bar in zip(bkpt_x_plus_y_split, bkpt_bar_x_plus_y_split)
+    for split, split_bar in zip(bkpt_x_plus_y_split, bkpt_bar_x_plus_y_split):
         is_isom, poset_morph = split.face_poset().is_isomorphic(split_bar.face_poset(), certificate=True)
         if is_isom:
             minimal_funciton_cell_description_logger.info(f"g (x+y split): {split} to {split_bar} def. as {poset_morph}.")
