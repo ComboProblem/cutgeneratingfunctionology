@@ -962,20 +962,24 @@ def split_complex(bkpt, lambda_star=0, x_split=False, xy_split=False, x_plus_y_s
     return pre_split, pre_split_complement, split_ge, split_le, split_eq
     
 
-def build_poset_isomorphsim_induction(bkpt, lambda_star, bkpt_bar, lambda_bar, show_plots=False):
+def poset_isomorphsim_induction_step_exists(bkpt, lambda_star, bkpt_bar, lambda_bar, show_plots=False):
     """
     EXAMPLES::
-    sage: build_poset_isomorphsim_induction([0, 1/3], 4/5, [0,1/3-1/1000], 4/5+1/1000)
+    from cutgeneratingfunctionology.igp import *
+    # minimal_funciton_cell_description_logger.setlevel(logging.DEBUG) # set level to debug to make name isom's checked
+    sage: poset_isomorphsim_induction_step_exists([0, 1/3], 4/5, [0,1/3-1/1000], 4/5+1/1000) # lambda_1 < 2 lambda_star -1 <1 , lambda_bar_1 < 2*lambda_bar -1 < 1 
     True  
-    sage: build_poset_isomorphsim_induction([0, 1/3], 4/5, [0,1/3], 2/3)
+    sage: poset_isomorphsim_induction_step_exists([0, 1/3], 4/5, [0,1/3], 2/3) # lambda_1 < 2 lambda_star -1 <1 , lambda_1 = 2*lambda_bar -1 < 1 
     False
-    sage: build_poset_isomorphsim_induction([0, 1/3], 4/5, [0,1/3], 2/3+1/10000)
+    sage: poset_isomorphsim_induction_step_exists([0, 1/3], 4/5, [0,1/3], 2/3+1/10000) # lambda_1 < 2 lambda_star -1 <1, lambda_1 < 2* lambda_bar -1 < 1
     True
-    sage: build_poset_isomorphsim_induction([0, 1/3], 4/5, [0,1/3], 2/3-1/10000)
+    sage: poset_isomorphsim_induction_step_exists([0,1/3-1/1000], 4/5+1/1000, [0,1/3], 2/3+1/10000) # lambda_1 < 2 lambda_star -1 <1 , lambda_1 < 2*lambda_bar -1 < 1 
+    True
+    sage: poset_isomorphsim_induction_step_exists([0, 1/3], 4/5, [0,1/3], 2/3-1/10000) # lambda_1 < 2 lambda_star -1 <1, lambda_0 < 2*lambda_bar -1 < lambda_1
     False
     """
     assert vector(bkpt_bar) in combinatorial_neighborhood_of_bkpt_seq(bkpt)
-    minimal_funciton_cell_description_logger.info(f"Assumption: b={bkpt} is contained in the combinatorial neighborood of bar b ={bkpt_bar}.")
+    minimal_funciton_cell_description_logger.debug(f"Assumption: b={bkpt} is contained in the combinatorial neighborood of bar b ={bkpt_bar}.")
     bkpt_x_split = split_complex(bkpt, lambda_star, x_split=True)
     bkpt_bar_x_split = split_complex(bkpt_bar, lambda_bar, x_split=True)
     map_names = ["pre-split", "pre-split-complement", "<=", ">=", "=="]
